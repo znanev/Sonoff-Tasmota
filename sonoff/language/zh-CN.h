@@ -142,6 +142,7 @@
 #define D_TOPIC "主题"
 #define D_TRANSMIT "发送"
 #define D_TRUE "True"
+#define D_TVOC "TVOC"
 #define D_UPGRADE "升级"
 #define D_UPLOAD "上传"
 #define D_UPTIME "运行时间"
@@ -365,7 +366,7 @@
 #define D_TIMER_TIME "Time"
 #define D_TIMER_DAYS "Days"
 #define D_TIMER_REPEAT "Repeat"
-#define D_TIMER_DEVICE "Device"
+#define D_TIMER_OUTPUT "Output"
 #define D_TIMER_POWER "Power"
 
 // xdrv_03_energy.ino
@@ -437,6 +438,7 @@
 #define D_UNIT_MILLIAMPERE "毫安"
 #define D_UNIT_MILLISECOND "毫秒"
 #define D_UNIT_MINUTE "分"
+#define D_UNIT_PARTS_PER_BILLION "ppb"
 #define D_UNIT_PARTS_PER_DECILITER "每分升"
 #define D_UNIT_PARTS_PER_MILLION "ppm"
 #define D_UNIT_PRESSURE "百帕"

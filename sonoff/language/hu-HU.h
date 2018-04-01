@@ -142,6 +142,7 @@
 #define D_TOPIC "Téma"
 #define D_TRANSMIT "Továbbít"
 #define D_TRUE "Igaz"
+#define D_TVOC "TVOC"
 #define D_UPGRADE "frissítés"
 #define D_UPLOAD "Feltöltés"
 #define D_UPTIME "Üzemidő"
@@ -365,7 +366,7 @@
 #define D_TIMER_TIME "Time"
 #define D_TIMER_DAYS "Days"
 #define D_TIMER_REPEAT "Repeat"
-#define D_TIMER_DEVICE "Device"
+#define D_TIMER_OUTPUT "Output"
 #define D_TIMER_POWER "Power"
 
 // xdrv_03_energy.ino
@@ -437,6 +438,7 @@
 #define D_UNIT_MILLIAMPERE "mA"
 #define D_UNIT_MILLISECOND "ms"
 #define D_UNIT_MINUTE "p"
+#define D_UNIT_PARTS_PER_BILLION "ppb"
 #define D_UNIT_PARTS_PER_DECILITER "ppd"
 #define D_UNIT_PARTS_PER_MILLION "ppm"
 #define D_UNIT_PRESSURE "hPa"

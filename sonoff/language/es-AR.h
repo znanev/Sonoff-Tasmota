@@ -142,6 +142,7 @@
 #define D_TOPIC "Topic"
 #define D_TRANSMIT "Transmitir"
 #define D_TRUE "Verdadero"
+#define D_TVOC "TVOC"
 #define D_UPGRADE "Actualización"
 #define D_UPLOAD "Carga"
 #define D_UPTIME "Tiempo Encendido"
@@ -365,7 +366,7 @@
 #define D_TIMER_TIME "Hora"
 #define D_TIMER_DAYS "Días"
 #define D_TIMER_REPEAT "Repetir"
-#define D_TIMER_DEVICE "Salida"
+#define D_TIMER_OUTPUT "Salida"
 #define D_TIMER_POWER "Estado"
 
 // xdrv_03_energy.ino
@@ -437,6 +438,7 @@
 #define D_UNIT_MILLIAMPERE "mA"
 #define D_UNIT_MILLISECOND "ms"
 #define D_UNIT_MINUTE "Min"
+#define D_UNIT_PARTS_PER_BILLION "ppb"
 #define D_UNIT_PARTS_PER_DECILITER "ppd"
 #define D_UNIT_PARTS_PER_MILLION "ppm"
 #define D_UNIT_PRESSURE "hPa"
