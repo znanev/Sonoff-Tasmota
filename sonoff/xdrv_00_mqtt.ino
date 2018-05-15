@@ -280,10 +280,9 @@ void MqttPublishPowerState(byte device)
   char stopic[TOPSZ];
   char scommand[33];
 
-  if ((device < 1) || (device > devices_present)) {
-    device = 1;
-  }
-  GetPowerDevice(scommand, device, sizeof(scommand));
+  if ((device < 1) || (device > devices_present)) { device = 1; }
+  GetPowerDevice(scommand, device, sizeof(scommand), Settings.flag.device_index_enable);
+
   GetTopic_P(stopic, STAT, mqtt_topic, (Settings.flag.mqtt_response) ? scommand : S_RSLT_RESULT);
   snprintf_P(mqtt_data, sizeof(mqtt_data), S_JSON_COMMAND_SVALUE, scommand, GetStateText(bitRead(power, device -1)));
   MqttPublish(stopic);
@@ -301,7 +300,7 @@ void MqttPublishPowerBlinkState(byte device)
     device = 1;
   }
   snprintf_P(mqtt_data, sizeof(mqtt_data), PSTR("{\"%s\":\"" D_JSON_BLINK " %s\"}"),
-    GetPowerDevice(scommand, device, sizeof(scommand)), GetStateText(bitRead(blink_mask, device -1)));
+    GetPowerDevice(scommand, device, sizeof(scommand), Settings.flag.device_index_enable), GetStateText(bitRead(blink_mask, device -1)));
 
   MqttPublishPrefixTopic_P(RESULT_OR_STAT, S_RSLT_POWER);
 }
@@ -399,6 +398,11 @@ boolean MqttCheckTls()
   }
 
   AddLog_P(LOG_LEVEL_INFO, S_LOG_MQTT, PSTR(D_FINGERPRINT));
+
+//#ifdef ARDUINO_ESP8266_RELEASE_2_4_1
+  EspClient = WiFiClientSecure();               // Wifi Secure Client reconnect issue 4497 (https://github.com/esp8266/Arduino/issues/4497)
+//#endif
+
   if (!EspClient.connect(Settings.mqtt_host, Settings.mqtt_port)) {
     snprintf_P(log_data, sizeof(log_data), PSTR(D_LOG_MQTT D_TLS_CONNECT_FAILED_TO " %s:%d. " D_RETRY_IN " %d " D_UNIT_SECOND),
       Settings.mqtt_host, Settings.mqtt_port, mqtt_retry_counter);
@@ -479,6 +483,14 @@ void MqttReconnect()
     mqtt_initial_connection_state = 1;
   }
 
+//#ifdef ARDUINO_ESP8266_RELEASE_2_4_1
+#ifdef USE_MQTT_TLS
+  EspClient = WiFiClientSecure();         // Wifi Secure Client reconnect issue 4497 (https://github.com/esp8266/Arduino/issues/4497)
+#else
+  EspClient = WiFiClient();               // Wifi Client reconnect issue 4497 (https://github.com/esp8266/Arduino/issues/4497)
+#endif
+//#endif
+
 #if (MQTT_LIBRARY_TYPE == MQTT_PUBSUBCLIENT)
   MqttClient.setCallback(MqttDataHandler);
   MqttClient.setServer(Settings.mqtt_host, Settings.mqtt_port);
@@ -528,7 +540,10 @@ bool MqttCommand()
   char *dataBuf = XdrvMailbox.data;
 
   int command_code = GetCommandCode(command, sizeof(command), type, kMqttCommands);
-  if (CMND_MQTTHOST == command_code) {
+  if (-1 == command_code) {
+    serviced = false;  // Unknown command
+  }
+  else if (CMND_MQTTHOST == command_code) {
     if ((data_len > 0) && (data_len < sizeof(Settings.mqtt_host))) {
       strlcpy(Settings.mqtt_host, (!strcmp(dataBuf,"0")) ? "" : (1 == payload) ? MQTT_HOST : dataBuf, sizeof(Settings.mqtt_host));
       restart_flag = 2;
@@ -635,7 +650,8 @@ bool MqttCommand()
           mqtt_data[0] = '\0';
         }
         MqttPublishDirect(stemp1, false);
-        snprintf_P(mqtt_data, sizeof(mqtt_data), S_JSON_COMMAND_SVALUE, command, D_JSON_DONE);
+//        snprintf_P(mqtt_data, sizeof(mqtt_data), S_JSON_COMMAND_SVALUE, command, D_JSON_DONE);
+        mqtt_data[0] = '\0';
       }
     }
   }
@@ -706,7 +722,7 @@ bool MqttCommand()
     if ((payload >= 0) && (payload <= 1)) {
       if (!payload) {
         for(i = 1; i <= devices_present; i++) {  // Clear MQTT retain in broker
-          GetTopic_P(stemp1, STAT, mqtt_topic, GetPowerDevice(scommand, i, sizeof(scommand)));
+          GetTopic_P(stemp1, STAT, mqtt_topic, GetPowerDevice(scommand, i, sizeof(scommand), Settings.flag.device_index_enable));
           mqtt_data[0] = '\0';
           MqttPublish(stemp1, Settings.flag.mqtt_power_retain);
         }
@@ -726,7 +742,8 @@ bool MqttCommand()
     }
     snprintf_P(mqtt_data, sizeof(mqtt_data), S_JSON_COMMAND_SVALUE, command, GetStateText(Settings.flag.mqtt_sensor_retain));
   }
-  else serviced = false;
+  else serviced = false;  // Unknown command
+
   return serviced;
 }
 
