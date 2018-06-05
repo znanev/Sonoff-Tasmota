@@ -1,5 +1,5 @@
 /*
-  xdrv_02_irremote.ino - infra red support for Sonoff-Tasmota
+  xdrv_05_irremote.ino - infra red support for Sonoff-Tasmota
 
   Copyright (C) 2018  Heiko Krupp, Lazar Obradovic and Theo Arends
 
@@ -393,15 +393,15 @@ boolean IrSendCommand()
  * Interface
 \*********************************************************************************************/
 
-#define XDRV_02
+#define XDRV_05
 
-boolean Xdrv02(byte function)
+boolean Xdrv05(byte function)
 {
   boolean result = false;
 
   if ((pin[GPIO_IRSEND] < 99) || (pin[GPIO_IRRECV] < 99)) {
     switch (function) {
-      case FUNC_INIT:
+      case FUNC_PRE_INIT:
         if (pin[GPIO_IRSEND] < 99) {
           IrSendInit();
         }

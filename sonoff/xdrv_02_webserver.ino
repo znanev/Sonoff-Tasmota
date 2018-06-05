@@ -1,5 +1,5 @@
 /*
-  webserver.ino - webserver for Sonoff-Tasmota
+  xdrv_02_webserver.ino - webserver for Sonoff-Tasmota
 
   Copyright (C) 2018  Theo Arends
 
@@ -24,6 +24,12 @@
  * Enables configuration and reconfiguration of WiFi credentials using a Captive Portal
  * Based on source by AlexT (https://github.com/tzapu)
 \*********************************************************************************************/
+
+#ifdef USE_RF_FLASH
+uint8_t *efm8bb1_update = NULL;
+#endif  // USE_RF_FLASH
+
+enum UploadTypes { UPL_TASMOTA, UPL_SETTINGS, UPL_EFM8BB1 };
 
 const char HTTP_HEAD[] PROGMEM =
   "<!DOCTYPE html><html lang=\"" D_HTML_LANGUAGE "\" class=\"\">"
@@ -337,6 +343,21 @@ static void WebGetArg(const char* arg, char* out, size_t max)
   out[max-1] = '\0';  // Ensure terminating NUL
 }
 
+void ShowWebSource(int source)
+{
+  if ((source > 0) && (source < SRC_MAX)) {
+    char stemp1[20];
+    snprintf_P(log_data, sizeof(log_data), PSTR("SRC: %s from %s"), GetTextIndexed(stemp1, sizeof(stemp1), source, kCommandSource), WebServer->client().remoteIP().toString().c_str());
+    AddLog(LOG_LEVEL_DEBUG);
+  }
+}
+
+void ExecuteWebCommand(char* svalue, int source)
+{
+  ShowWebSource(source);
+  ExecuteCommand(svalue, SRC_IGNORE);
+}
+
 void StartWebserver(int type, IPAddress ipweb)
 {
   if (!webserver_state) {
@@ -567,22 +588,23 @@ void HandleAjaxStatusRefresh()
 
   WebGetArg("o", tmp, sizeof(tmp));
   if (strlen(tmp)) {
-    ExecuteCommandPower(atoi(tmp), POWER_TOGGLE);
+    ShowWebSource(SRC_WEBGUI);
+    ExecuteCommandPower(atoi(tmp), POWER_TOGGLE, SRC_IGNORE);
   }
   WebGetArg("d", tmp, sizeof(tmp));
   if (strlen(tmp)) {
     snprintf_P(svalue, sizeof(svalue), PSTR(D_CMND_DIMMER " %s"), tmp);
-    ExecuteCommand(svalue);
+    ExecuteWebCommand(svalue, SRC_WEBGUI);
   }
   WebGetArg("t", tmp, sizeof(tmp));
   if (strlen(tmp)) {
     snprintf_P(svalue, sizeof(svalue), PSTR(D_CMND_COLORTEMPERATURE " %s"), tmp);
-    ExecuteCommand(svalue);
+    ExecuteWebCommand(svalue, SRC_WEBGUI);
   }
   WebGetArg("k", tmp, sizeof(tmp));
   if (strlen(tmp)) {
     snprintf_P(svalue, sizeof(svalue), PSTR(D_CMND_RFKEY "%s"), tmp);
-    ExecuteCommand(svalue);
+    ExecuteWebCommand(svalue, SRC_WEBGUI);
   }
 
   snprintf_P(mqtt_data, sizeof(mqtt_data), PSTR("{t}"));
@@ -926,9 +948,7 @@ void HandleBackupConfiguration()
 
   WebServer->send(200, FPSTR(HDR_CTYPE_STREAM), "");
   memcpy(settings_buffer, &Settings, sizeof(Settings));
-  settings_buffer[0] = CONFIG_FILE_SIGN;
-  settings_buffer[1] = (!config_xor_on_set) ? 0 : 1;
-  if (settings_buffer[1]) {
+  if (config_xor_on_set) {
     for (uint16_t i = 2; i < sizeof(Settings); i++) {
       settings_buffer[i] ^= (config_xor_on_set +i);
     }
@@ -1106,6 +1126,7 @@ void HandleSaveSettings()
     }
     ShowPage(page);
 
+    ShowWebSource(SRC_WEBGUI);
     restart_flag = 2;
   } else {
     HandleConfiguration();
@@ -1129,7 +1150,7 @@ void HandleResetConfiguration()
   ShowPage(page);
 
   snprintf_P(svalue, sizeof(svalue), PSTR(D_CMND_RESET " 1"));
-  ExecuteCommand(svalue);
+  ExecuteWebCommand(svalue, SRC_WEBGUI);
 }
 
 void HandleRestoreConfiguration()
@@ -1147,7 +1168,7 @@ void HandleRestoreConfiguration()
   ShowPage(page);
 
   upload_error = 0;
-  upload_file_type = 1;
+  upload_file_type = UPL_SETTINGS;
 }
 
 void HandleUpgradeFirmware()
@@ -1166,7 +1187,7 @@ void HandleUpgradeFirmware()
   ShowPage(page);
 
   upload_error = 0;
-  upload_file_type = 0;
+  upload_file_type = UPL_TASMOTA;
 }
 
 void HandleUpgradeFirmwareStart()
@@ -1181,7 +1202,7 @@ void HandleUpgradeFirmwareStart()
   WebGetArg("o", tmp, sizeof(tmp));
   if (strlen(tmp)) {
     snprintf_P(svalue, sizeof(svalue), PSTR(D_CMND_OTAURL " %s"), tmp);
-    ExecuteCommand(svalue);
+    ExecuteWebCommand(svalue, SRC_WEBGUI);
   }
 
   String page = FPSTR(HTTP_HEAD);
@@ -1193,7 +1214,7 @@ void HandleUpgradeFirmwareStart()
   ShowPage(page);
 
   snprintf_P(svalue, sizeof(svalue), PSTR(D_CMND_UPGRADE " 1"));
-  ExecuteCommand(svalue);
+  ExecuteWebCommand(svalue, SRC_WEBGUI);
 }
 
 void HandleUploadDone()
@@ -1223,6 +1244,12 @@ void HandleUploadDone()
       case 7: strncpy_P(error, PSTR(D_UPLOAD_ERR_7), sizeof(error)); break;
       case 8: strncpy_P(error, PSTR(D_UPLOAD_ERR_8), sizeof(error)); break;
       case 9: strncpy_P(error, PSTR(D_UPLOAD_ERR_9), sizeof(error)); break;
+#ifdef USE_RF_FLASH
+      case 10: strncpy_P(error, PSTR(D_UPLOAD_ERR_10), sizeof(error)); break;
+      case 11: strncpy_P(error, PSTR(D_UPLOAD_ERR_11), sizeof(error)); break;
+      case 12: strncpy_P(error, PSTR(D_UPLOAD_ERR_12), sizeof(error)); break;
+      case 13: strncpy_P(error, PSTR(D_UPLOAD_ERR_13), sizeof(error)); break;
+#endif
       default:
         snprintf_P(error, sizeof(error), PSTR(D_UPLOAD_ERROR_CODE " %d"), upload_error);
     }
@@ -1233,7 +1260,8 @@ void HandleUploadDone()
   } else {
     page += F("green'>" D_SUCCESSFUL "</font></b><br/>");
     page += FPSTR(HTTP_MSG_RSTRT);
-    restart_flag = 2;
+    ShowWebSource(SRC_WEBGUI);
+    restart_flag = 2;  // Always restart to re-enable disabled features during update
   }
   SettingsBufferFree();
   page += F("</div><br/>");
@@ -1248,7 +1276,7 @@ void HandleUploadLoop()
 
   if (HTTP_USER == webserver_state) { return; }
   if (upload_error) {
-    if (!upload_file_type) { Update.end(); }
+    if (UPL_TASMOTA == upload_file_type) { Update.end(); }
     return;
   }
 
@@ -1257,15 +1285,15 @@ void HandleUploadLoop()
   if (UPLOAD_FILE_START == upload.status) {
     restart_flag = 60;
     if (0 == upload.filename.c_str()[0]) {
-      upload_error = 1;
+      upload_error = 1;  // No file selected
       return;
     }
     SettingsSave(1);  // Free flash for upload
     snprintf_P(log_data, sizeof(log_data), PSTR(D_LOG_UPLOAD D_FILE " %s ..."), upload.filename.c_str());
     AddLog(LOG_LEVEL_INFO);
-    if (upload_file_type) {
+    if (UPL_SETTINGS == upload_file_type) {
       if (!SettingsBufferAlloc()) {
-        upload_error = 2;
+        upload_error = 2;  // Not enough space
         return;
       }
     } else {
@@ -1279,45 +1307,93 @@ void HandleUploadLoop()
       if (Settings.flag.mqtt_enabled) MqttDisconnect();
       uint32_t maxSketchSpace = (ESP.getFreeSketchSpace() - 0x1000) & 0xFFFFF000;
       if (!Update.begin(maxSketchSpace)) {         //start with max available size
-        upload_error = 2;
+
+//        if (_serialoutput) Update.printError(Serial);
+//        if (Update.getError() == UPDATE_ERROR_BOOTSTRAP) {
+//          if (_serialoutput) Serial.println("Device still in UART update mode, perform powercycle");
+//        }
+
+        upload_error = 2;  // Not enough space
         return;
       }
     }
     upload_progress_dot_count = 0;
   } else if (!upload_error && (UPLOAD_FILE_WRITE == upload.status)) {
     if (0 == upload.totalSize) {
-      if (upload_file_type) {
-        if (upload.buf[0] != CONFIG_FILE_SIGN) {
-          upload_error = 8;
-          return;
-        }
-        config_xor_on = upload.buf[1];
+      if (UPL_SETTINGS == upload_file_type) {
         config_block_count = 0;
-      } else {
-        if (upload.buf[0] != 0xE9) {
-          upload_error = 3;
-          return;
+      }
+      else {
+#ifdef USE_RF_FLASH
+        if ((SONOFF_BRIDGE == Settings.module) && (upload.buf[0] == ':')) {  // Check if this is a RF bridge FW file
+          Update.end();              // End esp8266 update session
+          upload_file_type = UPL_EFM8BB1;
+
+          upload_error = SnfBrUpdateInit();
+          if (upload_error != 0) { return; }
+        } else
+#endif  // USE_RF_FLASH
+        {
+          if (upload.buf[0] != 0xE9) {
+            upload_error = 3;  // Magic byte is not 0xE9
+            return;
+          }
+          uint32_t bin_flash_size = ESP.magicFlashChipSize((upload.buf[3] & 0xf0) >> 4);
+          if(bin_flash_size > ESP.getFlashChipRealSize()) {
+            upload_error = 4;  // Program flash size is larger than real flash size
+            return;
+          }
+          upload.buf[2] = 3;  // Force DOUT - ESP8285
         }
-        uint32_t bin_flash_size = ESP.magicFlashChipSize((upload.buf[3] & 0xf0) >> 4);
-        if(bin_flash_size > ESP.getFlashChipRealSize()) {
-          upload_error = 4;
-          return;
-        }
-        upload.buf[2] = 3;  // Force DOUT - ESP8285
       }
     }
-    if (upload_file_type) { // config
+    if (UPL_SETTINGS == upload_file_type) {
       if (!upload_error) {
         if (upload.currentSize > (sizeof(Settings) - (config_block_count * HTTP_UPLOAD_BUFLEN))) {
-          upload_error = 9;
+          upload_error = 9;  // File too large
           return;
         }
         memcpy(settings_buffer + (config_block_count * HTTP_UPLOAD_BUFLEN), upload.buf, upload.currentSize);
         config_block_count++;
       }
-    } else {  // firmware
+    }
+#ifdef USE_RF_FLASH
+    else if (UPL_EFM8BB1 == upload_file_type) {
+      if (efm8bb1_update != NULL) {    // We have carry over data since last write, i. e. a start but not an end
+        ssize_t result = rf_glue_remnant_with_new_data_and_write(efm8bb1_update, upload.buf, upload.currentSize);
+        free(efm8bb1_update);
+        efm8bb1_update = NULL;
+        if (result != 0) {
+          upload_error = abs(result);  // 2 = Not enough space, 8 = File invalid
+          return;
+        }
+      }
+      ssize_t result = rf_search_and_write(upload.buf, upload.currentSize);
+      if (result < 0) {
+        upload_error = abs(result);
+        return;
+      } else if (result > 0) {
+        if (result > upload.currentSize) {
+          // Offset is larger than the buffer supplied, this should not happen
+          upload_error = 9;  // File too large - Failed to decode RF firmware
+          return;
+        }
+        // A remnant has been detected, allocate data for it plus a null termination byte
+        size_t remnant_sz = upload.currentSize - result;
+        efm8bb1_update = (uint8_t *) malloc(remnant_sz + 1);
+        if (efm8bb1_update == NULL) {
+          upload_error = 2;  // Not enough space - Unable to allocate memory to store new RF firmware
+          return;
+        }
+        memcpy(efm8bb1_update, upload.buf + result, remnant_sz);
+        // Add null termination at the end of of remnant buffer
+        efm8bb1_update[remnant_sz] = '\0';
+      }
+    }
+#endif  // USE_RF_FLASH
+    else {  // firmware
       if (!upload_error && (Update.write(upload.buf, upload.currentSize) != upload.currentSize)) {
-        upload_error = 5;
+        upload_error = 5;  // Upload buffer miscompare
         return;
       }
       if (_serialoutput) {
@@ -1330,20 +1406,45 @@ void HandleUploadLoop()
     if (_serialoutput && (upload_progress_dot_count % 80)) {
       Serial.println();
     }
-    if (upload_file_type) {
-      if (config_xor_on) {
+    if (UPL_SETTINGS == upload_file_type) {
+      if (config_xor_on_set) {
         for (uint16_t i = 2; i < sizeof(Settings); i++) {
           settings_buffer[i] ^= (config_xor_on_set +i);
         }
       }
-      SettingsDefaultSet2();
-      memcpy((char*)&Settings +16, settings_buffer +16, sizeof(Settings) -16);
-      memcpy((char*)&Settings +8, settings_buffer +8, 4);  // Restore version and auto upgrade
-      SettingsBufferFree();
-    } else {
+      bool valid_settings = false;
+      unsigned long buffer_version = settings_buffer[11] << 24 | settings_buffer[10] << 16 | settings_buffer[9] << 8 | settings_buffer[8];
+      if (buffer_version > 0x06000000) {
+        uint16_t buffer_size = settings_buffer[3] << 8 | settings_buffer[2];
+        uint16_t buffer_crc = settings_buffer[15] << 8 | settings_buffer[14];
+        uint16_t crc = 0;
+        for (uint16_t i = 0; i < buffer_size; i++) {
+          if ((i < 14) || (i > 15)) { crc += settings_buffer[i]*(i+1); }  // Skip crc
+        }
+        valid_settings = (buffer_crc == crc);
+      } else {
+        valid_settings = (settings_buffer[0] == CONFIG_FILE_SIGN);
+      }
+      if (valid_settings) {
+        SettingsDefaultSet2();
+        memcpy((char*)&Settings +16, settings_buffer +16, sizeof(Settings) -16);
+        Settings.version = buffer_version;  // Restore version and auto upgrade after restart
+        SettingsBufferFree();
+      } else {
+        upload_error = 8;  // File invalid
+        return;
+      }
+    }
+#ifdef USE_RF_FLASH
+    else if (UPL_EFM8BB1 == upload_file_type) {
+      // RF FW flash done
+      upload_file_type = UPL_TASMOTA;
+    }
+#endif  // USE_RF_FLASH
+    else {
       if (!Update.end(true)) { // true to set the size to the current progress
         if (_serialoutput) { Update.printError(Serial); }
-        upload_error = 6;
+        upload_error = 6;  // Upload failed. Enable logging 3
         return;
       }
     }
@@ -1354,8 +1455,8 @@ void HandleUploadLoop()
   } else if (UPLOAD_FILE_ABORTED == upload.status) {
     restart_flag = 0;
     MqttRetryCounter(0);
-    upload_error = 7;
-    if (!upload_file_type) { Update.end(); }
+    upload_error = 7;  // Upload aborted
+    if (UPL_TASMOTA == upload_file_type) { Update.end(); }
   }
   delay(0);
 }
@@ -1381,16 +1482,16 @@ void HandleHttpCommand()
     WebGetArg("user", tmp1, sizeof(tmp1));
     char tmp2[100];
     WebGetArg("password", tmp2, sizeof(tmp2));
-    if (!(!strcmp(tmp1, WEB_USERNAME) && !strcmp(tmp2, Settings.web_password))) {
-      valid = 0;
-    }
+    if (!(!strcmp(tmp1, WEB_USERNAME) && !strcmp(tmp2, Settings.web_password))) { valid = 0; }
   }
 
   String message = F("{\"" D_RSLT_WARNING "\":\"");
   if (valid) {
     byte curridx = web_log_index;
     WebGetArg("cmnd", svalue, sizeof(svalue));
-    if (strlen(svalue)) { ExecuteCommand(svalue); }
+    if (strlen(svalue)) {
+      ExecuteWebCommand(svalue, SRC_WEBCOMMAND);
+    }
 
     if (web_log_index != curridx) {
       byte counter = curridx;
@@ -1449,7 +1550,7 @@ void HandleAjaxConsoleRefresh()
   if (strlen(svalue)) {
     snprintf_P(log_data, sizeof(log_data), PSTR(D_LOG_COMMAND "%s"), svalue);
     AddLog(LOG_LEVEL_INFO);
-    ExecuteCommand(svalue);
+    ExecuteWebCommand(svalue, SRC_WEBCONSOLE);
   }
 
   WebGetArg("c2", svalue, sizeof(svalue));
@@ -1624,6 +1725,7 @@ void HandleRestart()
   }
   ShowPage(page);
 
+  ShowWebSource(SRC_WEBGUI);
   restart_flag = 2;
 }
 
@@ -1675,5 +1777,203 @@ boolean ValidIpAddress(String str)
     if (c != '.' && (c < '0' || c > '9')) { return false; }
   }
   return true;
+}
+
+/*********************************************************************************************/
+
+String UrlEncode(const String& text)
+{
+  const char hex[] = "0123456789ABCDEF";
+
+	String encoded = "";
+	int len = text.length();
+	int i = 0;
+	while (i < len)	{
+		char decodedChar = text.charAt(i++);
+
+/*
+    if (('a' <= decodedChar && decodedChar <= 'z') ||
+        ('A' <= decodedChar && decodedChar <= 'Z') ||
+        ('0' <= decodedChar && decodedChar <= '9') ||
+        ('=' == decodedChar)) {
+      encoded += decodedChar;
+		} else {
+      encoded += '%';
+			encoded += hex[decodedChar >> 4];
+			encoded += hex[decodedChar & 0xF];
+    }
+*/
+    if (' ' == decodedChar) {
+      encoded += '%';
+			encoded += hex[decodedChar >> 4];
+			encoded += hex[decodedChar & 0xF];
+    } else {
+      encoded += decodedChar;
+    }
+
+	}
+	return encoded;
+}
+
+int WebSend(char *buffer)
+{
+  // http://192.168.178.86:80/cm?user=admin&password=joker&cmnd=POWER1 ON
+  // http://192.168.178.86:80/cm?cmnd=POWER1 ON
+  // [192.168.178.86:80,admin:joker] POWER1 ON
+
+  char *host;
+  char *port;
+  char *user;
+  char *password;
+  char *command;
+  uint16_t nport = 80;
+  int status = 1;                             // Wrong parameters
+
+  host = strtok_r(buffer, "]", &command);     // buffer = [192.168.178.86:80,admin:joker] POWER1 ON
+  if (host && command) {
+    host = LTrim(host);
+    host++;  // Skip [
+    host = strtok_r(host, ",", &user);        // host = 192.168.178.86:80,admin:joker > 192.168.178.86:80
+    host = strtok_r(host, ":", &port);        // host = 192.168.178.86:80 > 192.168.178.86
+    if (user) {
+      user = strtok_r(user, ":", &password);  // user = admin:joker > admin
+    }
+
+//snprintf_P(log_data, sizeof(log_data), PSTR("DBG: Buffer |%X|, Host |%X|, Port |%X|, User |%X|, Password |%X|, Command |%X|"), buffer, host, port, user, password, command);
+//AddLog(LOG_LEVEL_DEBUG);
+
+    if (port) { nport = atoi(port); }
+
+    String nuri = "";
+    if (user && password) {
+      nuri += F("user=");
+      nuri += user;
+      nuri += F("&password=");
+      nuri += password;
+      nuri += F("&");
+    }
+    nuri += F("cmnd=");
+    nuri += LTrim(command);
+    String uri = UrlEncode(nuri);
+
+    IPAddress host_ip;
+    if (WiFi.hostByName(host, host_ip)) {
+      WiFiClient client;
+
+      bool connected = false;
+      byte retry = 2;
+      while ((retry > 0) && !connected) {
+        --retry;
+        connected = client.connect(host_ip, nport);
+        if (connected) break;
+      }
+
+      if (connected) {
+        String url = F("GET /cm?");
+        url += uri;
+        url += F(" HTTP/1.1\r\n Host: ");
+        url += IPAddress(host_ip).toString();
+        if (port) {
+          url += F(" \r\n Port: ");
+          url += port;
+        }
+        url += F(" \r\n Connection: close\r\n\r\n");
+
+//snprintf_P(log_data, sizeof(log_data), PSTR("DBG: Url |%s|"), url.c_str());
+//AddLog(LOG_LEVEL_DEBUG);
+
+        client.print(url.c_str());
+        client.flush();
+        client.stop();
+        status = 0;                           // No error - Done
+      } else {
+        status = 2;                           // Connection failed
+      }
+    } else {
+      status = 3;                             // Host not found
+    }
+  }
+  return status;
+}
+
+/*********************************************************************************************/
+
+enum WebCommands { CMND_WEBSERVER, CMND_WEBPASSWORD, CMND_WEBLOG, CMND_WEBSEND, CMND_EMULATION };
+const char kWebCommands[] PROGMEM = D_CMND_WEBSERVER "|" D_CMND_WEBPASSWORD "|" D_CMND_WEBLOG "|"  D_CMND_WEBSEND "|" D_CMND_EMULATION ;
+const char kWebSendStatus[] PROGMEM = D_JSON_DONE "|" D_JSON_WRONG_PARAMETERS "|" D_JSON_CONNECT_FAILED "|" D_JSON_HOST_NOT_FOUND ;
+
+bool WebCommand()
+{
+  char command[CMDSZ];
+  bool serviced = true;
+
+  int command_code = GetCommandCode(command, sizeof(command), XdrvMailbox.topic, kWebCommands);
+  if (-1 == command_code) {
+    serviced = false;  // Unknown command
+  }
+  if (CMND_WEBSERVER == command_code) {
+    if ((XdrvMailbox.payload >= 0) && (XdrvMailbox.payload <= 2)) { Settings.webserver = XdrvMailbox.payload; }
+    if (Settings.webserver) {
+      snprintf_P(mqtt_data, sizeof(mqtt_data), PSTR("{\"" D_CMND_WEBSERVER "\":\"" D_JSON_ACTIVE_FOR " %s " D_JSON_ON_DEVICE " %s " D_JSON_WITH_IP_ADDRESS " %s\"}"),
+        (2 == Settings.webserver) ? D_ADMIN : D_USER, my_hostname, WiFi.localIP().toString().c_str());
+    } else {
+      snprintf_P(mqtt_data, sizeof(mqtt_data), S_JSON_COMMAND_SVALUE, command, GetStateText(0));
+    }
+  }
+  else if (CMND_WEBPASSWORD == command_code) {
+    if ((XdrvMailbox.data_len > 0) && (XdrvMailbox.data_len < sizeof(Settings.web_password))) {
+      strlcpy(Settings.web_password, (!strcmp(XdrvMailbox.data,"0")) ? "" : (1 == XdrvMailbox.payload) ? WEB_PASSWORD : XdrvMailbox.data, sizeof(Settings.web_password));
+      snprintf_P(mqtt_data, sizeof(mqtt_data), S_JSON_COMMAND_SVALUE, command, Settings.web_password);
+    } else {
+      snprintf_P(mqtt_data, sizeof(mqtt_data), S_JSON_COMMAND_ASTERIX, command);
+    }
+  }
+  else if (CMND_WEBLOG == command_code) {
+    if ((XdrvMailbox.payload >= LOG_LEVEL_NONE) && (XdrvMailbox.payload <= LOG_LEVEL_ALL)) { Settings.weblog_level = XdrvMailbox.payload; }
+    snprintf_P(mqtt_data, sizeof(mqtt_data), S_JSON_COMMAND_NVALUE, command, Settings.weblog_level);
+  }
+  else if (CMND_WEBSEND == command_code) {
+    if (XdrvMailbox.data_len > 0) {
+      uint8_t result = WebSend(XdrvMailbox.data);
+      char stemp1[20];
+      snprintf_P(mqtt_data, sizeof(mqtt_data), S_JSON_COMMAND_SVALUE, command, GetTextIndexed(stemp1, sizeof(stemp1), result, kWebSendStatus));
+    }
+  }
+#ifdef USE_EMULATION
+  else if (CMND_EMULATION == command_code) {
+    if ((XdrvMailbox.payload >= EMUL_NONE) && (XdrvMailbox.payload < EMUL_MAX)) {
+      Settings.flag2.emulation = XdrvMailbox.payload;
+      restart_flag = 2;
+    }
+    snprintf_P(mqtt_data, sizeof(mqtt_data), S_JSON_COMMAND_NVALUE, command, Settings.flag2.emulation);
+  }
+#endif  // USE_EMULATION
+  else serviced = false;  // Unknown command
+
+  return serviced;
+}
+
+/*********************************************************************************************\
+ * Interface
+\*********************************************************************************************/
+
+#define XDRV_02
+
+boolean Xdrv02(byte function)
+{
+  boolean result = false;
+
+  switch (function) {
+    case FUNC_LOOP:
+      PollDnsWebserver();
+#ifdef USE_EMULATION
+      if (Settings.flag2.emulation) PollUdp();
+#endif  // USE_EMULATION
+      break;
+    case FUNC_COMMAND:
+      result = WebCommand();
+      break;
+  }
+  return result;
 }
 #endif  // USE_WEBSERVER
