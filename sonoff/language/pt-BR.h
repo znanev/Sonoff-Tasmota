@@ -206,6 +206,7 @@
 #define D_ERASED_SECTOR "Apagar setores"
 
 // xdrv_02_webserver.ino
+#define D_NOSCRIPT "To use Tasmota, please enable JavaScript"
 #define D_MINIMAL_FIRMWARE_PLEASE_UPGRADE "Firmware mínimo - Atualizar por favor"
 #define D_WEBSERVER_ACTIVE_ON "Servidor WEB ativo em"
 #define D_WITH_IP_ADDRESS "com o endereço IP"
@@ -379,6 +380,7 @@
 // xdrv_09_timers.ino
 #define D_CONFIGURE_TIMER "Configurar temporizador"
 #define D_TIMER_PARAMETERS "Parâmetros"
+#define D_TIMER_ENABLE "Habilitar temporizadores"
 #define D_TIMER_ARM "Habilitar"
 #define D_TIMER_TIME "Horário"
 #define D_TIMER_DAYS "Dias"
@@ -435,6 +437,14 @@
 #define D_ENVIRONMENTAL_CONCENTRATION "PM"     // Environmetal Particle Matter
 #define D_PARTICALS_BEYOND "Partículas"
 
+// xsns_32_mpu6050.ino
+#define D_AX_AXIS "Accel. X-Axis"
+#define D_AY_AXIS "Accel. Y-Axis"
+#define D_AZ_AXIS "Accel. Z-Axis"
+#define D_GX_AXIS "Gyro X-Axis"
+#define D_GY_AXIS "Gyro Y-Axis"
+#define D_GZ_AXIS "Gyro Z-Axis"
+
 // sonoff_template.h
 #define D_SENSOR_NONE     "Nenhum"
 #define D_SENSOR_DHT11    "DHT11"
@@ -471,6 +481,9 @@
 #define D_SENSOR_SDM120_RX "SDM120 Rx"
 #define D_SENSOR_SDM630_TX "SDM630 Tx"
 #define D_SENSOR_SDM630_RX "SDM630 Rx"
+#define D_SENSOR_TM1638_CLK "TM16 CLK"
+#define D_SENSOR_TM1638_DIO "TM16 DIO"
+#define D_SENSOR_TM1638_STB "TM16 STB"
 
 // Units
 #define D_UNIT_AMPERE "A"

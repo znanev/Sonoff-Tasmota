@@ -37,10 +37,10 @@ typedef unsigned long power_t;              // Power (Relay) type
 \*********************************************************************************************/
 
 // Changes to the following MAX_ defines will impact settings layout
+#define MAX_SWITCHES           8            // Max number of switches
 #define MAX_RELAYS             8            // Max number of relays
 #define MAX_LEDS               4            // Max number of leds
 #define MAX_KEYS               4            // Max number of keys or buttons
-#define MAX_SWITCHES           4            // Max number of switches
 #define MAX_PWMS               5            // Max number of PWM channels
 #define MAX_COUNTERS           4            // Max number of counter sensors
 #define MAX_TIMERS             16           // Max number of Timers
@@ -68,6 +68,7 @@ typedef unsigned long power_t;              // Power (Relay) type
 #define HLW_IREF_PULSE         3500         // was 1666us = 600Hz = 4.545A
 
 #define MQTT_RETRY_SECS        10           // Minimum seconds to retry MQTT connection
+#define GLOBAL_VALUES_VALID    300          // Max number of seconds to keep last received values
 #define APP_POWER              0            // Default saved power state Off
 #define WS2812_MAX_LEDS        512          // Max number of LEDs
 
@@ -95,6 +96,8 @@ typedef unsigned long power_t;              // Power (Relay) type
 #define LOGSZ                  512          // Max number of characters in log
 #define MIN_MESSZ              893          // Min number of characters in MQTT message
 
+#define SENSOR_MAX_MISS        5            // Max number of missed sensor reads before deciding it's offline
+
 #ifdef USE_MQTT_TLS
   #define WEB_LOG_SIZE         2000         // Max number of characters in weblog
 #else
@@ -109,11 +112,15 @@ typedef unsigned long power_t;              // Power (Relay) type
 #define SERIAL_POLLING         100          // Serial receive polling in ms
 #define MAX_STATUS             11           // Max number of status lines
 
+#define NO_EXTRA_4K_HEAP                    // Allocate 4k heap for WPS in ESP8166/Arduino core v2.4.2 (was always allocated in previous versions)
+
 /*
 // Removed from esp8266 core since 20171105
 #define min(a,b) ((a)<(b)?(a):(b))
 #define max(a,b) ((a)>(b)?(a):(b))
 */
+#define tmin(a,b) ((a)<(b)?(a):(b))
+#define tmax(a,b) ((a)>(b)?(a):(b))
 
 #define STR_HELPER(x) #x
 #define STR(x) STR_HELPER(x)
@@ -167,7 +174,7 @@ enum GetDateAndTimeOptions { DT_LOCAL, DT_UTC, DT_RESTART, DT_UPTIME };
 
 enum LoggingLevels {LOG_LEVEL_NONE, LOG_LEVEL_ERROR, LOG_LEVEL_INFO, LOG_LEVEL_DEBUG, LOG_LEVEL_DEBUG_MORE, LOG_LEVEL_ALL};
 
-enum WifiConfigOptions {WIFI_RESTART, WIFI_SMARTCONFIG, WIFI_MANAGER, WIFI_WPSCONFIG, WIFI_RETRY, WIFI_WAIT, MAX_WIFI_OPTION};
+enum WifiConfigOptions {WIFI_RESTART, WIFI_SMARTCONFIG, WIFI_MANAGER, WIFI_WPSCONFIG, WIFI_RETRY, WIFI_WAIT, WIFI_SERIAL, MAX_WIFI_OPTION};
 
 enum SwitchModeOptions {TOGGLE, FOLLOW, FOLLOW_INV, PUSHBUTTON, PUSHBUTTON_INV, PUSHBUTTONHOLD, PUSHBUTTONHOLD_INV, PUSHBUTTON_TOGGLE, MAX_SWITCH_OPTION};
 
@@ -194,7 +201,7 @@ enum LichtSubtypes {LST_NONE, LST_SINGLE, LST_COLDWARM, LST_RGB, LST_RGBW, LST_R
 enum LichtSchemes {LS_POWER, LS_WAKEUP, LS_CYCLEUP, LS_CYCLEDN, LS_RANDOM, LS_MAX};
 
 enum XsnsFunctions {FUNC_PRE_INIT, FUNC_INIT, FUNC_LOOP, FUNC_EVERY_50_MSECOND, FUNC_EVERY_SECOND, FUNC_PREP_BEFORE_TELEPERIOD, FUNC_JSON_APPEND, FUNC_WEB_APPEND, FUNC_SAVE_BEFORE_RESTART,
-                    FUNC_COMMAND, FUNC_MQTT_SUBSCRIBE, FUNC_MQTT_INIT, FUNC_MQTT_DATA, FUNC_SET_POWER, FUNC_SHOW_SENSOR, FUNC_RULES_PROCESS};
+                    FUNC_COMMAND, FUNC_MQTT_SUBSCRIBE, FUNC_MQTT_INIT, FUNC_MQTT_DATA, FUNC_SET_POWER, FUNC_SHOW_SENSOR, FUNC_RULES_PROCESS, FUNC_FREE_MEM};
 
 const uint8_t kDefaultRfCode[9] PROGMEM = { 0x21, 0x16, 0x01, 0x0E, 0x03, 0x48, 0x2E, 0x1A, 0x00 };
 

@@ -28,7 +28,7 @@
  * Use online command StateText to translate ON, OFF, HOLD and TOGGLE.
  * Use online command Prefix to translate cmnd, stat and tele.
  *
- * Updated until v5.12.0n
+ * Updated until v6.1.1c
 \*********************************************************************/
 
 //#define LANGUAGE_MODULE_NAME         // Enable to display "Module Generic" (ie Spanish), Disable to display "Generic Module" (ie English)
@@ -206,6 +206,7 @@
 #define D_ERASED_SECTOR "Smazaný sektor"
 
 // xdrv_02_webserver.ino
+#define D_NOSCRIPT "Pro používání prostředí Tasmota povolte JavaScript"
 #define D_MINIMAL_FIRMWARE_PLEASE_UPGRADE "Firmware MINIMÁLNÍ - prosím zaktualizujte"
 #define D_WEBSERVER_ACTIVE_ON "Aktivní Web server"
 #define D_WITH_IP_ADDRESS "na IP adrese"
@@ -379,6 +380,7 @@
 // xdrv_09_timers.ino
 #define D_CONFIGURE_TIMER "Nastavení Časovače"
 #define D_TIMER_PARAMETERS "Časovač"
+#define D_TIMER_ENABLE "Povol časovače"
 #define D_TIMER_ARM "Aktivní"
 #define D_TIMER_TIME "Čas"
 #define D_TIMER_DAYS "Dny"
@@ -435,6 +437,14 @@
 #define D_ENVIRONMENTAL_CONCENTRATION "PM"     // Environmetal Particle Matter
 #define D_PARTICALS_BEYOND "částic"
 
+// xsns_32_mpu6050.ino
+#define D_AX_AXIS "Accel. osa-X"
+#define D_AY_AXIS "Accel. osa-Y"
+#define D_AZ_AXIS "Accel. osa-Z"
+#define D_GX_AXIS "Gyro osa-X"
+#define D_GY_AXIS "Gyro osa-Y"
+#define D_GZ_AXIS "Gyro osa-Z"
+
 // sonoff_template.h
 #define D_SENSOR_NONE     "Není"
 #define D_SENSOR_DHT11    "DHT11"
@@ -471,6 +481,9 @@
 #define D_SENSOR_SDM120_RX "SDM120 Rx"
 #define D_SENSOR_SDM630_TX "SDM630 Tx"
 #define D_SENSOR_SDM630_RX "SDM630 Rx"
+#define D_SENSOR_TM1638_CLK "TM16 CLK"
+#define D_SENSOR_TM1638_DIO "TM16 DIO"
+#define D_SENSOR_TM1638_STB "TM16 STB"
 
 // Units
 #define D_UNIT_AMPERE "A"

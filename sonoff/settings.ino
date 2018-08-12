@@ -286,8 +286,10 @@ void SettingsLoad()
   snprintf_P(log_data, sizeof(log_data), PSTR(D_LOG_CONFIG D_LOADED_FROM_FLASH_AT " %X, " D_COUNT " %d"), settings_location, Settings.save_flag);
   AddLog(LOG_LEVEL_DEBUG);
 
+#ifndef BE_MINIMAL
   if (bad_crc || (Settings.cfg_holder != (uint16_t)CFG_HOLDER)) { SettingsDefault(); }
   settings_crc = GetSettingsCrc();
+#endif  // BE_MINIMAL
 
   RtcSettingsLoad();
 }
@@ -756,12 +758,34 @@ void SettingsDelta()
     }
     if (Settings.version < 0x050E0002) {
       for (byte i = 1; i < MAX_RULE_SETS; i++) { Settings.rules[i][0] = '\0'; }
-      Settings.rule_enabled = Settings.flag.rules_enabled;
+      Settings.rule_enabled = Settings.flag.mqtt_serial_raw;
       Settings.rule_once = Settings.flag.rules_once;
     }
     if (Settings.version < 0x06000000) {
       Settings.cfg_size = sizeof(SYSCFG);
       Settings.cfg_crc = GetSettingsCrc();
+    }
+    if (Settings.version < 0x06000002) {
+      for (byte i = 0; i < MAX_SWITCHES; i++) {
+        if (i < 4) {
+          Settings.switchmode[i] = Settings.ex_switchmode[i];
+        } else {
+          Settings.switchmode[i] = SWITCH_MODE;
+        }
+      }
+      for (byte i = 0; i < MAX_GPIO_PIN; i++) {
+        if (Settings.my_gp.io[i] >= GPIO_SWT5) {  // Move up from GPIO_SWT5 to GPIO_KEY1
+          Settings.my_gp.io[i] += 4;
+        }
+      }
+    }
+    if (Settings.version < 0x06000003) {
+      Settings.flag.mqtt_serial_raw = 0;
+      Settings.flag.rules_once = 0;
+      Settings.flag3.data = 0;
+    }
+    if (Settings.version < 0x06010103) {
+      Settings.flag3.timers_enable = 1;
     }
 
     Settings.version = VERSION;

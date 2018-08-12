@@ -28,7 +28,7 @@
  * Use online command StateText to translate ON, OFF, HOLD and TOGGLE.
  * Use online command Prefix to translate cmnd, stat and tele.
  *
- * Updated until v5.14.0
+ * Updated until v6.0.0a
 \*********************************************************************/
 
 #define LANGUAGE_MODULE_NAME         // Enable to display "Module Generic" (ie Spanish), Disable to display "Generic Module" (ie English)
@@ -206,6 +206,7 @@
 #define D_ERASED_SECTOR "Settore cancellato"
 
 // xdrv_02_webserver.ino
+#define D_NOSCRIPT "To use Tasmota, please enable JavaScript"
 #define D_MINIMAL_FIRMWARE_PLEASE_UPGRADE "MINIMAL firmware - effettuare aggiornamento"
 #define D_WEBSERVER_ACTIVE_ON "Web server attivo su"
 #define D_WITH_IP_ADDRESS "con indirizzo IP"
@@ -321,10 +322,10 @@
 #define D_UPLOAD_ERR_7 "Invio annullato"
 #define D_UPLOAD_ERR_8 "File non valido"
 #define D_UPLOAD_ERR_9 "File troppo grande"
-#define D_UPLOAD_ERR_10 "Failed to init RF chip"
-#define D_UPLOAD_ERR_11 "Failed to erase RF chip"
-#define D_UPLOAD_ERR_12 "Failed to write to RF chip"
-#define D_UPLOAD_ERR_13 "Failed to decode RF firmware"
+#define D_UPLOAD_ERR_10 "Inizializzazione fallita del chip RF"
+#define D_UPLOAD_ERR_11 "Cancellazione fallita del chip RF"
+#define D_UPLOAD_ERR_12 "Scrittura fallita del chip RF"
+#define D_UPLOAD_ERR_13 "Decodifica fallita del firmware RF"
 #define D_UPLOAD_ERROR_CODE "Codice errore invio"
 
 #define D_ENTER_COMMAND "Inserire comando"
@@ -379,6 +380,7 @@
 // xdrv_09_timers.ino
 #define D_CONFIGURE_TIMER "Configura Timer"
 #define D_TIMER_PARAMETERS "Parametri Timer"
+#define D_TIMER_ENABLE "Abilita Timers"
 #define D_TIMER_ARM "Attiva"
 #define D_TIMER_TIME "Ora"
 #define D_TIMER_DAYS "Giorni"
@@ -435,6 +437,14 @@
 #define D_ENVIRONMENTAL_CONCENTRATION "PM"     // Environmetal Particle Matter
 #define D_PARTICALS_BEYOND "Particelle"
 
+// xsns_32_mpu6050.ino
+#define D_AX_AXIS "Accel. X-Axis"
+#define D_AY_AXIS "Accel. Y-Axis"
+#define D_AZ_AXIS "Accel. Z-Axis"
+#define D_GX_AXIS "Gyro X-Axis"
+#define D_GY_AXIS "Gyro Y-Axis"
+#define D_GZ_AXIS "Gyro Z-Axis"
+
 // sonoff_template.h
 #define D_SENSOR_NONE     "Nessuno"
 #define D_SENSOR_DHT11    "DHT11"
@@ -471,6 +481,9 @@
 #define D_SENSOR_SDM120_RX "SDM120 Rx"
 #define D_SENSOR_SDM630_TX "SDM630 Tx"
 #define D_SENSOR_SDM630_RX "SDM630 Rx"
+#define D_SENSOR_TM1638_CLK "TM16 CLK"
+#define D_SENSOR_TM1638_DIO "TM16 DIO"
+#define D_SENSOR_TM1638_STB "TM16 STB"
 
 // Units
 #define D_UNIT_AMPERE "A"

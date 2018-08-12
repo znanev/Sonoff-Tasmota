@@ -17,8 +17,6 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#define USE_ENERGY_SENSOR
-
 #ifdef USE_ENERGY_SENSOR
 /*********************************************************************************************\
  * HLW8012 and PZEM004T - Energy
@@ -93,18 +91,27 @@ void EnergyUpdateToday()
 }
 
 /*********************************************************************************************\
- * HLW8012 - Energy (Sonoff Pow)
+ * HLW8012, BL0937 or HJL-01 - Energy (Sonoff Pow, HuaFan, KMC70011, BlitzWolf)
  *
  * Based on Source: Shenzhen Heli Technology Co., Ltd
 \*********************************************************************************************/
 
+// HLW8012 based (Sonoff Pow, KMC70011, HuaFan)
 #define HLW_PREF            10000    // 1000.0W
 #define HLW_UREF             2200    // 220.0V
 #define HLW_IREF             4545    // 4.545A
+#define HLW_SEL_VOLTAGE         1
+
+// HJL-01 based (BlitzWolf, Homecube, Gosund)
+#define HJL_PREF             1362
+#define HJL_UREF              822
+#define HJL_IREF             3300
+#define HJL_SEL_VOLTAGE         0
 
 #define HLW_POWER_PROBE_TIME   10    // Number of seconds to probe for power before deciding none used
 
 byte hlw_select_ui_flag;
+byte hlw_ui_flag = 1;
 byte hlw_load_off;
 byte hlw_cf1_timer;
 unsigned long hlw_cf_pulse_length;
@@ -116,6 +123,10 @@ unsigned long hlw_cf1_pulse_counter;
 unsigned long hlw_cf1_voltage_pulse_length;
 unsigned long hlw_cf1_current_pulse_length;
 unsigned long hlw_energy_period_counter;
+
+unsigned long hlw_power_ratio = 0;
+unsigned long hlw_voltage_ratio = 0;
+unsigned long hlw_current_ratio = 0;
 
 unsigned long hlw_cf1_voltage_max_pulse_counter;
 unsigned long hlw_cf1_current_max_pulse_counter;
@@ -162,7 +173,7 @@ void HlwEverySecond()
     hlw_len = 10000 / hlw_energy_period_counter;
     hlw_energy_period_counter = 0;
     if (hlw_len) {
-      energy_kWhtoday_delta += ((HLW_PREF * Settings.energy_power_calibration) / hlw_len) / 36;
+      energy_kWhtoday_delta += ((hlw_power_ratio * Settings.energy_power_calibration) / hlw_len) / 36;
       EnergyUpdateToday();
     }
   }
@@ -180,7 +191,7 @@ void HlwEvery200ms()
   }
 
   if (hlw_cf_pulse_length && energy_power_on && !hlw_load_off) {
-    hlw_w = (HLW_PREF * Settings.energy_power_calibration) / hlw_cf_pulse_length;
+    hlw_w = (hlw_power_ratio * Settings.energy_power_calibration) / hlw_cf_pulse_length;
     energy_power = (float)hlw_w / 10;
   } else {
     energy_power = 0;
@@ -197,12 +208,12 @@ void HlwEvery200ms()
     } else {
       hlw_cf1_pulse_length = 0;
     }
-    if (hlw_select_ui_flag) {
+    if (hlw_select_ui_flag == hlw_ui_flag) {
       hlw_cf1_voltage_pulse_length = hlw_cf1_pulse_length;
       hlw_cf1_voltage_max_pulse_counter = hlw_cf1_pulse_counter;
 
       if (hlw_cf1_voltage_pulse_length && energy_power_on) {     // If powered on always provide voltage
-        hlw_u = (HLW_UREF * Settings.energy_voltage_calibration) / hlw_cf1_voltage_pulse_length;
+        hlw_u = (hlw_voltage_ratio * Settings.energy_voltage_calibration) / hlw_cf1_voltage_pulse_length;
         energy_voltage = (float)hlw_u / 10;
       } else {
         energy_voltage = 0;
@@ -213,7 +224,7 @@ void HlwEvery200ms()
       hlw_cf1_current_max_pulse_counter = hlw_cf1_pulse_counter;
 
       if (hlw_cf1_current_pulse_length && energy_power) {   // No current if no power being consumed
-        hlw_i = (HLW_IREF * Settings.energy_current_calibration) / hlw_cf1_current_pulse_length;
+        hlw_i = (hlw_current_ratio * Settings.energy_current_calibration) / hlw_cf1_current_pulse_length;
         energy_current = (float)hlw_i / 1000;
       } else {
         energy_current = 0;
@@ -231,6 +242,18 @@ void HlwInit()
     Settings.energy_power_calibration = HLW_PREF_PULSE;
     Settings.energy_voltage_calibration = HLW_UREF_PULSE;
     Settings.energy_current_calibration = HLW_IREF_PULSE;
+  }
+
+  if (BLITZWOLF_BWSHP2 == Settings.module) {
+    hlw_power_ratio = HJL_PREF;
+    hlw_voltage_ratio = HJL_UREF;
+    hlw_current_ratio = HJL_IREF;
+    hlw_ui_flag = HJL_SEL_VOLTAGE;
+  } else {
+    hlw_power_ratio = HLW_PREF;
+    hlw_voltage_ratio = HLW_UREF;
+    hlw_current_ratio = HLW_IREF;
+    hlw_ui_flag = HLW_SEL_VOLTAGE;
   }
 
   hlw_cf_pulse_length = 0;
@@ -284,19 +307,10 @@ void CseReceived()
   //  0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23
   // 55 5A 02 F7 60 00 03 AB 00 40 10 02 60 5D 51 A6 58 03 E9 EF 71 0B 7A 36
   // Hd Id VCal---- Voltage- ICal---- Current- PCal---- Power--- Ad CF--- Ck
-  AddLogSerial(LOG_LEVEL_DEBUG_MORE);
 
   uint8_t header = serial_in_buffer[0];
   if ((header & 0xFC) == 0xFC) {
     AddLog_P(LOG_LEVEL_DEBUG, PSTR("CSE: Abnormal hardware"));
-    return;
-  }
-
-  // Calculate checksum
-  uint8_t checksum = 0;
-  for (byte i = 2; i < 23; i++) checksum += serial_in_buffer[i];
-  if (checksum != serial_in_buffer[23]) {
-    AddLog_P(LOG_LEVEL_DEBUG, PSTR("CSE: " D_CHECKSUM_FAILURE));
     return;
   }
 
@@ -369,17 +383,30 @@ bool CseSerialInput()
   if (cse_receive_flag) {
     serial_in_buffer[serial_in_byte_counter++] = serial_in_byte;
     if (24 == serial_in_byte_counter) {
-      CseReceived();
-      cse_receive_flag = 0;
-      return 1;
+      AddLogSerial(LOG_LEVEL_DEBUG_MORE);
+      uint8_t checksum = 0;
+      for (byte i = 2; i < 23; i++) { checksum += serial_in_buffer[i]; }
+      if (checksum == serial_in_buffer[23]) {
+        CseReceived();
+        cse_receive_flag = 0;
+        return 1;
+      } else {
+        AddLog_P(LOG_LEVEL_DEBUG, PSTR("CSE: " D_CHECKSUM_FAILURE));
+        do {                                  // Sync buffer with data (issue #1907 and #3425)
+          memmove(serial_in_buffer, serial_in_buffer +1, 24);
+          serial_in_byte_counter--;
+        } while ((serial_in_byte_counter > 1) && (0x5A != serial_in_buffer[1]));
+        if (0x5A == serial_in_buffer[1]) {
+          AddLog_P(LOG_LEVEL_DEBUG, PSTR("CSE: Fixed out-of-sync"));
+          serial_in_byte_counter++;
+        } else {
+          cse_receive_flag = 0;
+          serial_in_byte_counter = 0;
+        }
+      }
     }
   } else {
-    if ((0x5A == serial_in_byte) && (serial_in_byte_counter)) {  // 0x5A - Packet header 2
-      if (serial_in_byte_counter > 1) {       // Sync buffer with data (issue #1907)
-        serial_in_buffer[0] = serial_in_buffer[--serial_in_byte_counter];
-        serial_in_byte_counter = 1;
-        AddLog_P(LOG_LEVEL_DEBUG, PSTR("CSE: Fixed out-of-sync"));
-      }
+    if ((0x5A == serial_in_byte) && (1 == serial_in_byte_counter)) {  // 0x5A - Packet header 2
       cse_receive_flag = 1;
     } else {
       serial_in_byte_counter = 0;
@@ -918,7 +945,7 @@ boolean EnergyCommand()
   else if (((ENERGY_HLW8012 == energy_flg) || (ENERGY_CSE7766 == energy_flg)) && (CMND_POWERSET == command_code)) {  // Watt
     if ((XdrvMailbox.payload > 0) && (XdrvMailbox.payload < 3601)) {
       if ((ENERGY_HLW8012 == energy_flg) && hlw_cf_pulse_length) {
-        Settings.energy_power_calibration = (XdrvMailbox.payload * 10 * hlw_cf_pulse_length) / HLW_PREF;
+        Settings.energy_power_calibration = (XdrvMailbox.payload * 10 * hlw_cf_pulse_length) / hlw_power_ratio;
       }
       else if ((ENERGY_CSE7766 == energy_flg) && power_cycle) {
         Settings.energy_power_calibration = (XdrvMailbox.payload * power_cycle) / CSE_PREF;
@@ -938,7 +965,7 @@ boolean EnergyCommand()
   else if (((ENERGY_HLW8012 == energy_flg) || (ENERGY_CSE7766 == energy_flg)) && (CMND_VOLTAGESET == command_code)) {  // Volt
     if ((XdrvMailbox.payload > 0) && (XdrvMailbox.payload < 501)) {
       if ((ENERGY_HLW8012 == energy_flg) && hlw_cf1_voltage_pulse_length) {
-        Settings.energy_voltage_calibration = (XdrvMailbox.payload * 10 * hlw_cf1_voltage_pulse_length) / HLW_UREF;
+        Settings.energy_voltage_calibration = (XdrvMailbox.payload * 10 * hlw_cf1_voltage_pulse_length) / hlw_voltage_ratio;
       }
       else if ((ENERGY_CSE7766 == energy_flg) && voltage_cycle) {
         Settings.energy_voltage_calibration = (XdrvMailbox.payload * voltage_cycle) / CSE_UREF;
@@ -958,7 +985,7 @@ boolean EnergyCommand()
   else if (((ENERGY_HLW8012 == energy_flg) || (ENERGY_CSE7766 == energy_flg)) && (CMND_CURRENTSET == command_code)) {  // milliAmpere
     if ((XdrvMailbox.payload > 0) && (XdrvMailbox.payload < 16001)) {
       if ((ENERGY_HLW8012 == energy_flg) && hlw_cf1_current_pulse_length) {
-        Settings.energy_current_calibration = (XdrvMailbox.payload * hlw_cf1_current_pulse_length) / HLW_IREF;
+        Settings.energy_current_calibration = (XdrvMailbox.payload * hlw_cf1_current_pulse_length) / hlw_current_ratio;
       }
       else if ((ENERGY_CSE7766 == energy_flg) && current_cycle) {
         Settings.energy_current_calibration = (XdrvMailbox.payload * current_cycle) / 1000;
