@@ -803,14 +803,12 @@ const char HTTP_FORM_KNX_ADD_TABLE_ROW2[] PROGMEM =
 
 void HandleKNXConfiguration()
 {
+  if (HttpUser()) { return; }
+  if (!WebAuthenticate()) { return WebServer->requestAuthentication(); }
+  AddLog_P(LOG_LEVEL_DEBUG, S_LOG_HTTP, S_CONFIGURE_KNX);
+
   char tmp[100];
   String stmp;
-
-  if (HTTP_USER == webserver_state) {
-    HandleRoot();
-    return;
-  }
-  AddLog_P(LOG_LEVEL_DEBUG, S_LOG_HTTP, S_CONFIGURE_KNX);
 
   if ( WebServer->hasArg("save") ) {
     KNX_Save_Settings();
@@ -1156,7 +1154,7 @@ boolean KnxCommand()
   else if (CMND_KNX_PA == command_code) {
     if (XdrvMailbox.data_len) {
       if (strstr(XdrvMailbox.data, ".")) {     // Process parameter entry
-        char sub_string[XdrvMailbox.data_len +1];
+        char sub_string[XdrvMailbox.data_len];
 
         int pa_area = atoi(subStr(sub_string, XdrvMailbox.data, ".", 1));
         int pa_line = atoi(subStr(sub_string, XdrvMailbox.data, ".", 2));
@@ -1183,7 +1181,7 @@ boolean KnxCommand()
   else if ((CMND_KNX_GA == command_code) && (index > 0) && (index <= MAX_KNX_GA)) {
     if (XdrvMailbox.data_len) {
       if (strstr(XdrvMailbox.data, ",")) {     // Process parameter entry
-        char sub_string[XdrvMailbox.data_len +1];
+        char sub_string[XdrvMailbox.data_len];
 
         int ga_option = atoi(subStr(sub_string, XdrvMailbox.data, ",", 1));
         int ga_area = atoi(subStr(sub_string, XdrvMailbox.data, ",", 2));
@@ -1232,7 +1230,7 @@ boolean KnxCommand()
   else if ((CMND_KNX_CB == command_code) && (index > 0) && (index <= MAX_KNX_CB)) {
     if (XdrvMailbox.data_len) {
       if (strstr(XdrvMailbox.data, ",")) {     // Process parameter entry
-        char sub_string[XdrvMailbox.data_len +1];
+        char sub_string[XdrvMailbox.data_len];
 
         int cb_option = atoi(subStr(sub_string, XdrvMailbox.data, ",", 1));
         int cb_area = atoi(subStr(sub_string, XdrvMailbox.data, ",", 2));

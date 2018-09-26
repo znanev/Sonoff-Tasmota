@@ -366,6 +366,7 @@ void RulesEvery50ms()
   if (Settings.rule_enabled) {  // Any rule enabled
     char json_event[120];
 
+    if (-1 == rules_new_power) { rules_new_power = power; }
     if (rules_new_power != rules_old_power) {
       if (rules_old_power != -1) {
         for (byte i = 0; i < devices_present; i++) {
@@ -424,9 +425,9 @@ void RulesEvery50ms()
 
 void RulesEvery100ms()
 {
-  if (Settings.rule_enabled) {       // Any rule enabled
+  if (Settings.rule_enabled && (uptime > 4)) {  // Any rule enabled and allow 4 seconds start-up time for sensors (#3811)
     mqtt_data[0] = '\0';
-    uint16_t tele_period_save = tele_period;
+    int tele_period_save = tele_period;
     tele_period = 2;                 // Do not allow HA updates during next function call
     XsnsNextCall(FUNC_JSON_APPEND);  // ,"INA219":{"Voltage":4.494,"Current":0.020,"Power":0.089}
     tele_period = tele_period_save;

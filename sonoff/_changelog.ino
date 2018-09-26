@@ -1,13 +1,68 @@
-/* 6.2.0.2 20180904
- * Rewrite energy monitoring using energy sensor driver modules
- * Fix lost today and total energy value after power cycle (#3689)
+/* 6.2.1.8 20180926
+ * Change status JSON message providing more switch and retain information
+ * Change pinmode for no-pullup defined switches to pullup when configured as switchmode PUSHBUTTON (=3 and up) (#3896)
+ * Add delay after restart before processing rule sensor data (#3811)
  *
- * 6.2.0.1 20180902
- * Fix possible ambiguity on command parameters if StateText contains numbers only (#3656)
- * Fix possible exception due to buffer overflow (#3659)
+ * 6.2.1.7 20180925
+ * Remove restart after ntpserver change and force NTP re-sync (#3890)
+ * Release full Shelly2 support
+ * Released tools/decode-config.py by Norbert Richter to decode configuration data. See file for information
+ * Add define USE_DISPLAYS for selecting image sonoff-display
+ *
+ * 6.2.1.6 20180922
+ * Removed commands PowerCal, VoltageCal and CurrentCal as more functionality is provided by commands PowerSet, VoltageSet and CurrentSet
+ * Allow decimals as input to commands PowerSet, VoltageSet and CurrentSet
+ * Add support for PCA9685 12bit 16pin hardware PWM driver (#3866)
+ * Add power value below 5W to Sonoff Pow R2 and S31 (#3745)
+ * Add force_update to Home Assistant discovery (#3873)
+ * Fix rule trigger POWER1#STATE execution after restart and SetOption0 is 0 (#3856)
+ * Disable serial logging on Shelly2 as serial is being used by energy monitoring (#3878)
+ * Fix Shelly2 wrong FrequencySet calculation and add input range checks (#3882)
+ *
+ * 6.2.1.5 20180921
+ * Add authentication to HTTP web pages
+ * Add energy monitoring to Shelly2 (#2789)
+ * Rewrite TSL2561 driver to fix some issues (#3681)
+ *
+ * 6.2.1.4 20180916
+ * Add command SerialSend5 to send raw serial data like "A5074100545293"
+ * Update MCP230xx driver
+ * Update Czech translation
+ * Update MP3 driver (#3800)
+ * Add userid/password option to decode-status.py (#3796)
+ * Fix syslog when emulation is selected (#2109, #3784)
+ * Fix Pzem2 compilation error (#3766, #3767)
+ * Add uncalibrated energy monitoring to Shelly2 (#2789)
+ *
+ * 6.2.1.3 20180907
+ * Change web Configure Module GPIO drop down list order for better readability
+ * Fix showing Period Power in energy threshold messages
+ * Fix ButtonRetain to not use default topic for clearing retain messages (#3737)
+ * Add sleep to Nova Fitness SDS01X sensor (#2841, #3724, #3749)
+ * Add Analog input AD0 enabled to sonoff-sensors.bin (#3756, #3757)
+ * Add Support for Xiaomi-Philips Bulbs (#3787)
+ *
+ * 6.2.1.2 20180906
+ * Fix KNX PA exception. Regression from 6.2.1 buffer overflow caused by subStr() (#3700, #3710)
+ * Add command SetOption52 to control display of optional time offset from UTC in JSON messages (#3629, #3711)
+ * Add experimental support for PZEM-003,014,016,017 Energy monitoring (#3694)
+ * Add basic support for MP3 player using DFRobot RB-DFR-562 (#3723)
+ * Fix setting and getting color temperature for Philips Hue emulation (#3733)
+ *
+ * 6.2.1.1 20180905
+ * Rewrite energy monitoring using energy sensor driver modules
  * Add Wifi channel number to state message (#3664)
- * Fix Wemo emulation to select the first relay when more than one relay is present (#3657)
  * Add support for Shelly 1 and basic support for Shelly 2 - No energy monitoring yet (#2789)
+ * Add network information to display start screen (#3704)
+ * Add command Display to show all settings at once
+ * Add toggle function RGBW lights (#3695, #3697)
+ * Add user configurable GPIO02 and GPIO03 on H801 devices (#3692)
+ *
+ * 6.2.1 20180905
+ * Fix possible ambiguity on command parameters if StateText contains numbers only (#3656)
+ * Fix Wemo emulation to select the first relay when more than one relay is present (#3657)
+ * Fix possible exception due to buffer overflow (#3659)
+ * Fix lost energy today and total energy value after power cycle (#3689)
  *
  * 6.2.0 20180901
  * Allow user override of define MAX_RULE_VARS and MAX_RULE_TIMERS (#3561)
