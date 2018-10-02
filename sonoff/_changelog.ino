@@ -1,7 +1,28 @@
-/* 6.2.1.8 20180926
+/* 6.2.1.11 20191002
+ * Remove support for MQTT Client based on esp-mqtt-arduino by #define MQTT_LIBRARY_TYPE MQTT_ESPMQTTARDUINO
+ * Add support for MQTT Client based on lwmqtt to be selected by #define MQTT_LIBRARY_TYPE MQTT_ARDUINOMQTT
+ *
+ * 6.2.1.10 20180930
+ * Add command RGBWWTable to support color calibration (#3933)
+ * Add support for Michael Haustein ESP Switch
+ * Add support for EXS Relay V5.0 (#3810)
+ * Fix timer offset -00:00 causing 12:00 hour offset (#3923)
+ * Add support for OBI Power Socket (#1988, #3944)
+ * Add support for Teckin Power Socket with Energy Monitoring (#3950)
+ *
+ * 6.2.1.9 20180928
+ * Add Apparent Power and Reactive Power to Energy Monitoring devices (#251)
+ * Add RF Receiver control to module MagicHome to be used on Arilux LC10 (#3792)
+ * Fix I2CScan invalid JSON error message (#3925)
+ * Fix invalid configuration restores and decode_config.py crc error when savedata = 0 (#3918)
+ *
+ * 6.2.1.8 20180926
  * Change status JSON message providing more switch and retain information
  * Change pinmode for no-pullup defined switches to pullup when configured as switchmode PUSHBUTTON (=3 and up) (#3896)
  * Add delay after restart before processing rule sensor data (#3811)
+ * Fix Home Assistant forced light discovery (#3908)
+ * Add rule triggers SWITCH1#BOOT and POWER1#BOOT (#3904, #3910)
+ * Add support for Neo Coolcam Wifi Smart Power Plug
  *
  * 6.2.1.7 20180925
  * Remove restart after ntpserver change and force NTP re-sync (#3890)

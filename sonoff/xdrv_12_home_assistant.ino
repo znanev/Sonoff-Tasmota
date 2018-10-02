@@ -50,7 +50,7 @@ const char HASS_DISCOVER_LIGHT_DIMMER[] PROGMEM =
   "\"brightness_value_template\":\"{{value_json." D_CMND_DIMMER "}}\"";
 
 const char HASS_DISCOVER_LIGHT_COLOR[] PROGMEM =
-  "%s,\"rgb_command_topic\":\"%s\","               // cmnd/led2/Color
+  "%s,\"rgb_command_topic\":\"%s2\","              // cmnd/led2/Color2
   "\"rgb_state_topic\":\"%s\","                    // stat/led2/RESULT
   "\"rgb_value_template\":\"{{value_json." D_CMND_COLOR "}}\"";
 //  "\"rgb_value_template\":\"{{value_json." D_CMND_COLOR " | join(',')}}\"";
@@ -76,7 +76,7 @@ void HAssDiscoverRelay()
 
   for (int i = 1; i <= MAX_RELAYS; i++) {
     is_light = ((i == devices_present) && (light_type));
-    is_topic_light = Settings.flag.hass_light;
+    is_topic_light = Settings.flag.hass_light || is_light;
 
     mqtt_data[0] = '\0';  // Clear retained message
 
