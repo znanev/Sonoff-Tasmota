@@ -302,9 +302,7 @@ struct SYSCFG {
   uint16_t      pulse_counter_type;        // 5D0
   uint16_t      pulse_counter_debounce;    // 5D2
   uint8_t       rf_code[17][9];            // 5D4
-
-  byte          free_66d[1];               // 66D
-
+  uint8_t       timezone_minutes;          // 66D
   uint16_t      switch_debounce;           // 66E
   Timer         timer[MAX_TIMERS];         // 670
   int           latitude;                  // 6B0
@@ -322,8 +320,9 @@ struct SYSCFG {
   uint16_t      mcp230xx_int_timer;        // 718
   uint8_t       rgbwwTable[5];             // 71A
 
-  byte          free_71F[153];             // 71F
+  byte          free_71F[149];             // 71F
 
+  uint32_t      energy_kWhtotal_time;      // 7B4
   unsigned long weight_item;               // 7B8 Weight of one item in gram * 10
 
   byte          free_7BC[2];               // 7BC

@@ -226,22 +226,6 @@ void ShowFreeMem(const char *where)
 
 /*********************************************************************************************\
  * Function call to all xdrv
- *
- * FUNC_PRE_INIT
- * FUNC_INIT
- * FUNC_LOOP
- * FUNC_MQTT_SUBSCRIBE
- * FUNC_MQTT_INIT
- * return FUNC_MQTT_DATA
- * return FUNC_COMMAND
- * FUNC_SET_POWER
- * FUNC_SHOW_SENSOR
- * FUNC_EVERY_SECOND
- * FUNC_EVERY_50_MSECOND
- * FUNC_EVERY_100_MSECOND
- * FUNC_EVERY_250_MSECOND
- * FUNC_RULES_PROCESS
- * FUNC_FREE_MEM
 \*********************************************************************************************/
 
 boolean XdrvCall(byte Function)
@@ -249,6 +233,7 @@ boolean XdrvCall(byte Function)
   boolean result = false;
 
   for (byte x = 0; x < xdrv_present; x++) {
+    if (global_state.wifi_down) { delay(DRIVER_BOOT_DELAY); }
     result = xdrv_func_ptr[x](Function);
     if (result) break;
   }
