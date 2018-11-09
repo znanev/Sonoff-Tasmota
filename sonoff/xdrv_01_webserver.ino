@@ -25,6 +25,8 @@
  * Based on source by AlexT (https://github.com/tzapu)
 \*********************************************************************************************/
 
+#define XDRV_01                1
+
 #define HTTP_REFRESH_TIME      2345   // milliseconds
 
 #ifdef USE_RF_FLASH
@@ -397,7 +399,7 @@ void StopWebserver()
 void WifiManagerBegin()
 {
   // setup AP
-  if ((WL_CONNECTED == WiFi.status()) && (static_cast<uint32_t>(WiFi.localIP()) != 0)) {
+  if (!global_state.wifi_down) {
     WiFi.mode(WIFI_AP_STA);
     AddLog_P(LOG_LEVEL_DEBUG, PSTR(D_LOG_WIFI D_WIFIMANAGER_SET_ACCESSPOINT_AND_STATION));
   } else {
@@ -773,7 +775,7 @@ void HandleModuleConfiguration()
 
   mytmplt cmodule;
   memcpy_P(&cmodule, &kModules[Settings.module], sizeof(cmodule));
-  for (byte j = 0; j < GPIO_SENSOR_END; j++) {
+  for (byte j = 0; j < sizeof(kGpioNiceList); j++) {
     midx = pgm_read_byte(kGpioNiceList + j);
     if (!GetUsedInModule(midx, cmodule.gp.io)) {
       snprintf_P(mqtt_data, sizeof(mqtt_data), HTTP_SCRIPT_MODULE2, midx, midx, GetTextIndexed(stemp, sizeof(stemp), midx, kSensorNames));
@@ -1242,11 +1244,11 @@ void HandleInformation()
   // }2 = </th><td>
   String func = FPSTR(HTTP_SCRIPT_INFO_BEGIN);
   func += F("<table style='width:100%'><tr><th>");
-  func += F(D_PROGRAM_VERSION "}2"); func += my_version;
+  func += F(D_PROGRAM_VERSION "}2"); func += my_version; func += my_image;
   func += F("}1" D_BUILD_DATE_AND_TIME "}2"); func += GetBuildDateAndTime();
   func += F("}1" D_CORE_AND_SDK_VERSION "}2" ARDUINO_ESP8266_RELEASE "/"); func += String(ESP.getSdkVersion());
   func += F("}1" D_UPTIME "}2"); func += GetUptime();
-  snprintf_P(stopic, sizeof(stopic), PSTR(" at %X"), GetSettingsAddress());
+  snprintf_P(stopic, sizeof(stopic), PSTR(" at 0x%X"), GetSettingsAddress());
   func += F("}1" D_FLASH_WRITE_COUNT "}2"); func += String(Settings.save_flag); func += stopic;
   func += F("}1" D_BOOT_COUNT "}2"); func += String(Settings.bootcount);
   func += F("}1" D_RESTART_REASON "}2"); func += GetResetReason();
@@ -1320,7 +1322,8 @@ void HandleInformation()
 
   func += F("}1}2&nbsp;");  // Empty line
   func += F("}1" D_ESP_CHIP_ID "}2"); func += String(ESP.getChipId());
-  func += F("}1" D_FLASH_CHIP_ID "}2"); func += String(ESP.getFlashChipId());
+  snprintf_P(stopic, sizeof(stopic), PSTR("0x%06X"), ESP.getFlashChipId());
+  func += F("}1" D_FLASH_CHIP_ID "}2"); func += stopic;
   func += F("}1" D_FLASH_CHIP_SIZE "}2"); func += String(ESP.getFlashChipRealSize() / 1024); func += F("kB");
   func += F("}1" D_PROGRAM_FLASH_SIZE "}2"); func += String(ESP.getFlashChipSize() / 1024); func += F("kB");
   func += F("}1" D_PROGRAM_SIZE "}2"); func += String(ESP.getSketchSize() / 1024); func += F("kB");
@@ -2008,8 +2011,6 @@ bool WebCommand()
 /*********************************************************************************************\
  * Interface
 \*********************************************************************************************/
-
-#define XDRV_01
 
 boolean Xdrv01(byte function)
 {

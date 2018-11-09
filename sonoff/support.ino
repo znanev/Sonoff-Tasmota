@@ -475,6 +475,21 @@ char TempUnit()
   return (Settings.flag.temperature_conversion) ? 'F' : 'C';
 }
 
+float ConvertPressure(float p)
+{
+  float result = p;
+
+  if (!isnan(p) && Settings.flag.pressure_conversion) {
+    result = p * 0.75006375541921;  // mmHg
+  }
+  return result;
+}
+
+String PressureUnit()
+{
+  return (Settings.flag.pressure_conversion) ? String(D_UNIT_MILLIMETER_MERCURY) : String(D_UNIT_PRESSURE);
+}
+
 void SetGlobalValues(float temperature, float humidity)
 {
   global_update = uptime;
@@ -631,89 +646,20 @@ boolean GetUsedInModule(byte val, uint8_t *arr)
   int offset = 0;
 
   if (!val) { return false; }  // None
-#ifndef USE_I2C
-  if (GPIO_I2C_SCL == val) { return true; }
-  if (GPIO_I2C_SDA == val) { return true; }
-#endif
-#ifndef USE_WS2812
-  if (GPIO_WS2812 == val) { return true; }
-#endif
-#ifndef USE_IR_REMOTE
-  if (GPIO_IRSEND == val) { return true; }
-#ifndef USE_IR_RECEIVE
-  if (GPIO_IRRECV == val) { return true; }
-#endif
-#endif
-#ifndef USE_MHZ19
-  if (GPIO_MHZ_TXD == val) { return true; }
-  if (GPIO_MHZ_RXD == val) { return true; }
-#endif
 
-  int pzem = 3;
-#ifndef USE_PZEM004T
-  pzem--;
-  if (GPIO_PZEM004_RX == val) { return true; }
-#endif
-#ifndef USE_PZEM_AC
-  pzem--;
-  if (GPIO_PZEM016_RX == val) { return true; }
-#endif
-#ifndef USE_PZEM_DC
-  pzem--;
-  if (GPIO_PZEM017_RX == val) { return true; }
-#endif
-  if (!pzem && (GPIO_PZEM0XX_TX == val)) { return true; }
+  if ((val >= GPIO_KEY1) && (val < GPIO_KEY1 + MAX_KEYS)) {
+    offset = (GPIO_KEY1_NP - GPIO_KEY1);
+  }
+  if ((val >= GPIO_KEY1_NP) && (val < GPIO_KEY1_NP + MAX_KEYS)) {
+    offset = -(GPIO_KEY1_NP - GPIO_KEY1);
+  }
 
-#ifndef USE_SENSEAIR
-  if (GPIO_SAIR_TX == val) { return true; }
-  if (GPIO_SAIR_RX == val) { return true; }
-#endif
-#ifndef USE_SPI
-  if (GPIO_SPI_CS == val) { return true; }
-  if (GPIO_SPI_DC == val) { return true; }
-#endif
-#ifndef USE_DISPLAY
-  if (GPIO_BACKLIGHT == val) { return true; }
-#endif
-#ifndef USE_PMS5003
-  if (GPIO_PMS5003 == val) { return true; }
-#endif
-#ifndef USE_NOVA_SDS
-  if (GPIO_SDS0X1_TX == val) { return true; }
-  if (GPIO_SDS0X1_RX == val) { return true; }
-#endif
-#ifndef USE_SERIAL_BRIDGE
-  if (GPIO_SBR_TX == val) { return true; }
-  if (GPIO_SBR_RX == val) { return true; }
-#endif
-#ifndef USE_SR04
-  if (GPIO_SR04_TRIG == val) { return true; }
-  if (GPIO_SR04_ECHO == val) { return true; }
-#endif
-#ifndef USE_SDM120
-  if (GPIO_SDM120_TX == val) { return true; }
-  if (GPIO_SDM120_RX == val) { return true; }
-#endif
-#ifndef USE_SDM630
-  if (GPIO_SDM630_TX == val) { return true; }
-  if (GPIO_SDM630_RX == val) { return true; }
-#endif
-#ifndef USE_TM1638
-  if (GPIO_TM16CLK == val) { return true; }
-  if (GPIO_TM16DIO == val) { return true; }
-  if (GPIO_TM16STB == val) { return true; }
-#endif
-#ifndef USE_HX711
-  if (GPIO_HX711_SCK == val) { return true; }
-  if (GPIO_HX711_DAT == val) { return true; }
-#endif
-#ifndef USE_TX20_WIND_SENSOR
-  if (GPIO_TX20_TXD_BLACK == val) { return true; }
-#endif
-#ifndef USE_RC_SWITCH
-  if (GPIO_RFSEND == val) { return true; }
-  if (GPIO_RFRECV == val) { return true; }
-#endif
+  if ((val >= GPIO_SWT1) && (val < GPIO_SWT1 + MAX_SWITCHES)) {
+    offset = (GPIO_SWT1_NP - GPIO_SWT1);
+  }
+  if ((val >= GPIO_SWT1_NP) && (val < GPIO_SWT1_NP + MAX_SWITCHES)) {
+    offset = -(GPIO_SWT1_NP - GPIO_SWT1);
+  }
 
   if ((val >= GPIO_REL1) && (val < GPIO_REL1 + MAX_RELAYS)) {
     offset = (GPIO_REL1_INV - GPIO_REL1);
@@ -735,6 +681,14 @@ boolean GetUsedInModule(byte val, uint8_t *arr)
   if ((val >= GPIO_PWM1_INV) && (val < GPIO_PWM1_INV + MAX_PWMS)) {
     offset = -(GPIO_PWM1_INV - GPIO_PWM1);
   }
+
+  if ((val >= GPIO_CNTR1) && (val < GPIO_CNTR1 + MAX_COUNTERS)) {
+    offset = (GPIO_CNTR1_NP - GPIO_CNTR1);
+  }
+  if ((val >= GPIO_CNTR1_NP) && (val < GPIO_CNTR1_NP + MAX_COUNTERS)) {
+    offset = -(GPIO_CNTR1_NP - GPIO_CNTR1);
+  }
+
   for (byte i = 0; i < MAX_GPIO_PIN; i++) {
     if (arr[i] == val) { return true; }
     if (arr[i] == val + offset) { return true; }
@@ -1615,9 +1569,7 @@ int WifiState()
 {
   int state = -1;
 
-  if ((WL_CONNECTED == WiFi.status()) && (static_cast<uint32_t>(WiFi.localIP()) != 0)) {
-    state = WIFI_RESTART;
-  }
+  if (!global_state.wifi_down) { state = WIFI_RESTART; }
   if (wifi_config_type) { state = wifi_config_type; }
   return state;
 }
@@ -2194,7 +2146,7 @@ void RtcSecond()
 
   if ((ntp_sync_minute > 59) && (RtcTime.minute > 2)) ntp_sync_minute = 1;                 // If sync prepare for a new cycle
   uint8_t offset = (uptime < 30) ? RtcTime.second : (((ESP.getChipId() & 0xF) * 3) + 3) ;  // First try ASAP to sync. If fails try once every 60 seconds based on chip id
-  if ((WL_CONNECTED == WiFi.status()) && (offset == RtcTime.second) && ((RtcTime.year < 2016) || (ntp_sync_minute == RtcTime.minute) || ntp_force_sync)) {
+  if (!global_state.wifi_down && (offset == RtcTime.second) && ((RtcTime.year < 2016) || (ntp_sync_minute == RtcTime.minute) || ntp_force_sync)) {
     ntp_time = sntp_get_current_timestamp();
     if (ntp_time > 1451602800) {  // Fix NTP bug in core 2.4.1/SDK 2.2.1 (returns Thu Jan 01 08:00:10 1970 after power on)
       ntp_force_sync = 0;
@@ -2268,81 +2220,6 @@ void RtcInit()
   BreakTime(utc_time, RtcTime);
   TickerRtc.attach(1, RtcSecond);
 }
-
-#ifndef USE_ADC_VCC
-/*********************************************************************************************\
- * ADC support
-\*********************************************************************************************/
-
-uint16_t adc_last_value = 0;
-
-uint16_t AdcRead()
-{
-  uint16_t analog = 0;
-  for (byte i = 0; i < 32; i++) {
-    analog += analogRead(A0);
-    delay(1);
-  }
-  analog >>= 5;
-  return analog;
-}
-
-#ifdef USE_RULES
-void AdcEvery250ms()
-{
-  uint16_t new_value = AdcRead();
-  if ((new_value < adc_last_value -10) || (new_value > adc_last_value +10)) {
-    adc_last_value = new_value;
-    uint16_t value = adc_last_value / 10;
-    snprintf_P(mqtt_data, sizeof(mqtt_data), PSTR("{\"ANALOG\":{\"A0div10\":%d}}"), (value > 99) ? 100 : value);
-    XdrvRulesProcess();
-  }
-}
-#endif  // USE_RULES
-
-void AdcShow(boolean json)
-{
-  uint16_t analog = AdcRead();
-
-  if (json) {
-    snprintf_P(mqtt_data, sizeof(mqtt_data), PSTR("%s,\"ANALOG\":{\"A0\":%d}"), mqtt_data, analog);
-#ifdef USE_WEBSERVER
-  } else {
-    snprintf_P(mqtt_data, sizeof(mqtt_data), HTTP_SNS_ANALOG, mqtt_data, "", 0, analog);
-#endif  // USE_WEBSERVER
-  }
-}
-
-/*********************************************************************************************\
- * Interface
-\*********************************************************************************************/
-
-#define XSNS_02
-
-boolean Xsns02(byte function)
-{
-  boolean result = false;
-
-  if (pin[GPIO_ADC0] < 99) {
-    switch (function) {
-#ifdef USE_RULES
-      case FUNC_EVERY_250_MSECOND:
-        AdcEvery250ms();
-        break;
-#endif  // USE_RULES
-      case FUNC_JSON_APPEND:
-        AdcShow(1);
-        break;
-#ifdef USE_WEBSERVER
-      case FUNC_WEB_APPEND:
-        AdcShow(0);
-        break;
-#endif  // USE_WEBSERVER
-    }
-  }
-  return result;
-}
-#endif  // USE_ADC_VCC
 
 /*********************************************************************************************\
  * Syslog
@@ -2437,9 +2314,7 @@ void AddLog(byte loglevel)
     if (!web_log_index) web_log_index++;   // Index 0 is not allowed as it is the end of char string
   }
 #endif  // USE_WEBSERVER
-  if ((WL_CONNECTED == WiFi.status()) && (loglevel <= syslog_level)) {
-    Syslog();
-  }
+  if (!global_state.wifi_down && (loglevel <= syslog_level)) { Syslog(); }
 }
 
 void AddLog_P(byte loglevel, const char *formatP)
