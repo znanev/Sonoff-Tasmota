@@ -392,7 +392,7 @@ void KNX_DEL_CB( byte CBnum )
 }
 
 
-bool KNX_CONFIG_NOT_MATCH()
+bool KNX_CONFIG_NOT_MATCH(void)
 {
   // Check for configured parameters that the device does not have (module changed)
   for (byte i = 0; i < KNX_MAX_device_param; ++i)
@@ -442,7 +442,7 @@ bool KNX_CONFIG_NOT_MATCH()
 }
 
 
-void KNXStart()
+void KNXStart(void)
 {
   knx.start(nullptr);
   snprintf_P(log_data, sizeof(log_data), PSTR(D_LOG_KNX D_START));
@@ -450,7 +450,7 @@ void KNXStart()
 }
 
 
-void KNX_INIT()
+void KNX_INIT(void)
 {
   // Check for incompatible config
   if (Settings.knx_GA_registered > MAX_KNX_GA) { Settings.knx_GA_registered = MAX_KNX_GA; }
@@ -795,7 +795,7 @@ const char HTTP_FORM_KNX_ADD_TABLE_ROW2[] PROGMEM =
   "<tr><td><b>GAfnum / GAarea / GAfdef -> {optex}</b></td>"
   "<td><button type='submit' name='btn_del_cb' value='{opval}' class='button bred'> " D_DELETE " </button></td></tr>";
 
-void HandleKNXConfiguration()
+void HandleKNXConfiguration(void)
 {
   if (HttpUser()) { return; }
   if (!WebAuthenticate()) { return WebServer->requestAuthentication(); }
@@ -994,7 +994,7 @@ void HandleKNXConfiguration()
 }
 
 
-void KNX_Save_Settings()
+void KNX_Save_Settings(void)
 {
   String stmp;
   address_t KNX_addr;
@@ -1047,7 +1047,7 @@ void KNX_Save_Settings()
 #endif  // USE_WEBSERVER
 
 
-boolean KnxCommand()
+boolean KnxCommand(void)
 {
   char command[CMDSZ];
   uint8_t index = XdrvMailbox.index;
@@ -1290,7 +1290,7 @@ boolean Xdrv11(byte function)
 #ifdef USE_WEBSERVER
 #ifdef USE_KNX_WEB_MENU
       case FUNC_WEB_ADD_BUTTON:
-        strncat_P(mqtt_data, HTTP_BTN_MENU_KNX, sizeof(mqtt_data));
+        strncat_P(mqtt_data, HTTP_BTN_MENU_KNX, sizeof(mqtt_data) - strlen(mqtt_data) -1);
         break;
       case FUNC_WEB_ADD_HANDLER:
         WebServer->on("/kn", HandleKNXConfiguration);
@@ -1298,7 +1298,7 @@ boolean Xdrv11(byte function)
 #endif // USE_KNX_WEB_MENU
 #endif  // USE_WEBSERVER
       case FUNC_LOOP:
-        knx.loop();  // Process knx events
+        if (!global_state.wifi_down) { knx.loop(); }  // Process knx events
         break;
       case FUNC_EVERY_50_MSECOND:
         if (toggle_inhibit) {

@@ -29,6 +29,9 @@
 
 #define HTTP_REFRESH_TIME      2345   // milliseconds
 
+#include <ESP8266WebServer.h>         // WifiManager, Webserver
+#include <DNSServer.h>                // WifiManager
+
 #ifdef USE_RF_FLASH
 uint8_t *efm8bb1_update = NULL;
 #endif  // USE_RF_FLASH
@@ -43,12 +46,13 @@ const char HTTP_HEAD[] PROGMEM =
   "<title>{h} - {v}</title>"
 
   "<script>"
-  "var cn,x,lt,to,tp,pc='';"
-  "cn=180;"
-  "x=null;"                  // Allow for abortion
+  "var x=null,lt,to,tp,pc='';"   // x=null allow for abortion
   "function eb(s){"
     "return document.getElementById(s);"  // Save code space
-  "}"
+  "}";
+
+const char HTTP_SCRIPT_COUNTER[] PROGMEM =
+  "var cn=180;"                  // seconds
   "function u(){"
     "if(cn>=0){"
       "eb('t').innerHTML='" D_RESTART_IN " '+cn+' " D_SECONDS "';"
@@ -56,10 +60,9 @@ const char HTTP_HEAD[] PROGMEM =
       "setTimeout(u,1000);"
     "}"
   "}"
-  "function c(l){"
-    "eb('s1').value=l.innerText||l.textContent;"
-    "eb('p1').focus();"
-  "}"
+  "</script>";
+
+const char HTTP_SCRIPT_ROOT[] PROGMEM =
   "function la(p){"
     "var a='';"
     "if(la.arguments.length==1){"
@@ -85,43 +88,21 @@ const char HTTP_HEAD[] PROGMEM =
     "la('?t='+p);"              // ?t related to WebGetArg("t", tmp, sizeof(tmp));
   "}";
 
-const char HTTP_HEAD_RELOAD[] PROGMEM =
-  "setTimeout(function(){location.href='.';},4000);";
+const char HTTP_SCRIPT_WIFI[] PROGMEM =
+  "function c(l){"
+    "eb('s1').value=l.innerText||l.textContent;"
+    "eb('p1').focus();"
+  "}";
 
-const char HTTP_HEAD_STYLE[] PROGMEM =
-  "</script>"
+const char HTTP_SCRIPT_RELOAD[] PROGMEM =
+  "setTimeout(function(){location.href='.';},9000);"
+  "</script>";
 
-  "<style>"
-  "div,fieldset,input,select{padding:5px;font-size:1em;}"
-  "input{width:100%;box-sizing:border-box;-webkit-box-sizing:border-box;-moz-box-sizing:border-box;}"
-  "select{width:100%;}"
-  "textarea{resize:none;width:98%;height:318px;padding:5px;overflow:auto;}"
-  "body{text-align:center;font-family:verdana;}"
-  "td{padding:0px;}"
-  "button{border:0;border-radius:0.3rem;background-color:#1fa3ec;color:#fff;line-height:2.4rem;font-size:1.2rem;width:100%;-webkit-transition-duration:0.4s;transition-duration:0.4s;cursor:pointer;}"
-  "button:hover{background-color:#0e70a4;}"
-  ".bred{background-color:#d43535;}"
-  ".bred:hover{background-color:#931f1f;}"
-  ".bgrn{background-color:#47c266;}"
-  ".bgrn:hover{background-color:#5aaf6f;}"
-  "a{text-decoration:none;}"
-  ".p{float:left;text-align:left;}"
-  ".q{float:right;text-align:right;}"
-  "</style>"
+// Local OTA upgrade requires more time to complete cp: before web ui should be reloaded
+const char HTTP_SCRIPT_RELOAD_OTA[] PROGMEM =
+  "setTimeout(function(){location.href='.';},20000);"
+  "</script>";
 
-  "</head>"
-  "<body>"
-  "<div style='text-align:left;display:inline-block;min-width:340px;'>"
-#ifdef BE_MINIMAL
-  "<div style='text-align:center;color:red;'><h3>" D_MINIMAL_FIRMWARE_PLEASE_UPGRADE "</h3></div>"
-#endif
-  "<div style='text-align:center;'><noscript>" D_NOSCRIPT "<br/></noscript>"
-#ifdef LANGUAGE_MODULE_NAME
-  "<h3>" D_MODULE " {ha</h3>"
-#else
-  "<h3>{ha " D_MODULE "</h3>"
-#endif
-  "<h2>{h}</h2>{j}</div>";
 const char HTTP_SCRIPT_CONSOL[] PROGMEM =
   "var sn=0;"                    // Scroll position
   "var id=0;"                    // Get most of weblog initially
@@ -158,28 +139,76 @@ const char HTTP_SCRIPT_CONSOL[] PROGMEM =
     "return false;"
   "}"
   "</script>";
+
 const char HTTP_SCRIPT_MODULE1[] PROGMEM =
   "var os;"
-  "function sk(s,g){"
+  "function sk(s,g){"            // s = value, g = id and name
     "var o=os.replace(\"value='\"+s+\"'\",\"selected value='\"+s+\"'\");"
     "eb('g'+g).innerHTML=o;"
   "}"
   "function sl(){"
-    "var o0=\"";
+    "if(x!=null){x.abort();}"    // Abort any request pending
+    "x=new XMLHttpRequest();"
+    "x.onreadystatechange=function(){"
+      "if(x.readyState==4&&x.status==200){"
+        "var i,o=x.responseText.replace(/}1/g,\"<option value=\").replace(/}2/g,\"</option>\");"
+        "i=o.indexOf(\"}3\");"   // String separator means do not use "}3" in Module name and Sensor name
+        "os=o.substring(0,i);"
+        "sk(}4,99);"
+        "os=o.substring(i+2);";  // +2 is length "}3"
 const char HTTP_SCRIPT_MODULE2[] PROGMEM =
-    "}1'%d'>%02d %s}2";     // "}1" and "}2" means do not use "}x" in Module name and Sensor name
+      "}"
+    "};"
+    "x.open('GET','md?m=1',true);"  // ?m related to WebServer->hasArg("m")
+    "x.send();"
+  "}";
 const char HTTP_SCRIPT_MODULE3[] PROGMEM =
-    "\";"
-    "os=o0.replace(/}1/g,\"<option value=\").replace(/}2/g,\"</option>\");";
+  "}1'%d'>%02d %s}2";            // "}1" and "}2" means do not use "}x" in Module name and Sensor name
+
 const char HTTP_SCRIPT_INFO_BEGIN[] PROGMEM =
   "function i(){"
     "var s,o=\"";
 const char HTTP_SCRIPT_INFO_END[] PROGMEM =
-    "\";"                   // "}1" and "}2" means do not use "}x" in Information text
+    "\";"                        // "}1" and "}2" means do not use "}x" in Information text
     "s=o.replace(/}1/g,\"</td></tr><tr><th>\").replace(/}2/g,\"</th><td>\");"
     "eb('i').innerHTML=s;"
   "}"
   "</script>";
+
+const char HTTP_HEAD_STYLE[] PROGMEM =
+  "</script>"
+
+  "<style>"
+  "div,fieldset,input,select{padding:5px;font-size:1em;}"
+  "input{width:100%;box-sizing:border-box;-webkit-box-sizing:border-box;-moz-box-sizing:border-box;}"
+  "select{width:100%;}"
+  "textarea{resize:none;width:98%;height:318px;padding:5px;overflow:auto;}"
+  "body{text-align:center;font-family:verdana;}"
+  "td{padding:0px;}"
+  "button{border:0;border-radius:0.3rem;background-color:#1fa3ec;color:#fff;line-height:2.4rem;font-size:1.2rem;width:100%;-webkit-transition-duration:0.4s;transition-duration:0.4s;cursor:pointer;}"
+  "button:hover{background-color:#0e70a4;}"
+  ".bred{background-color:#d43535;}"
+  ".bred:hover{background-color:#931f1f;}"
+  ".bgrn{background-color:#47c266;}"
+  ".bgrn:hover{background-color:#5aaf6f;}"
+  "a{text-decoration:none;}"
+  ".p{float:left;text-align:left;}"
+  ".q{float:right;text-align:right;}"
+  "</style>"
+
+  "</head>"
+  "<body>"
+  "<div style='text-align:left;display:inline-block;min-width:340px;'>"
+#ifdef BE_MINIMAL
+  "<div style='text-align:center;color:red;'><h3>" D_MINIMAL_FIRMWARE_PLEASE_UPGRADE "</h3></div>"
+#endif
+  "<div style='text-align:center;'><noscript>" D_NOSCRIPT "<br/></noscript>"
+#ifdef LANGUAGE_MODULE_NAME
+  "<h3>" D_MODULE " {ha</h3>"
+#else
+  "<h3>{ha " D_MODULE "</h3>"
+#endif
+  "<h2>{h}</h2>{j}</div>";
 const char HTTP_MSG_SLIDER1[] PROGMEM =
   "<div><span class='p'>" D_COLDLIGHT "</span><span class='q'>" D_WARMLIGHT "</span></div>"
   "<div><input type='range' min='153' max='500' value='%d' onchange='lc(value)'></div>";
@@ -387,7 +416,7 @@ void StartWebserver(int type, IPAddress ipweb)
   if (type) { webserver_state = type; }
 }
 
-void StopWebserver()
+void StopWebserver(void)
 {
   if (webserver_state) {
     WebServer->close();
@@ -396,7 +425,7 @@ void StopWebserver()
   }
 }
 
-void WifiManagerBegin()
+void WifiManagerBegin(void)
 {
   // setup AP
   if (!global_state.wifi_down) {
@@ -419,7 +448,7 @@ void WifiManagerBegin()
   StartWebserver(HTTP_MANAGER, WiFi.softAPIP());
 }
 
-void PollDnsWebserver()
+void PollDnsWebserver(void)
 {
   if (DnsServer) { DnsServer->processNextRequest(); }
   if (WebServer) { WebServer->handleClient(); }
@@ -427,7 +456,7 @@ void PollDnsWebserver()
 
 /*********************************************************************************************/
 
-void SetHeader()
+void SetHeader(void)
 {
   WebServer->sendHeader(F("Cache-Control"), F("no-cache, no-store, must-revalidate"));
   WebServer->sendHeader(F("Pragma"), F("no-cache"));
@@ -476,6 +505,7 @@ void ShowPage(String &page, bool auth)
 
   if (HTTP_MANAGER == webserver_state) {
     if (WifiConfigCounter()) {
+      page.replace(F("</script>"), FPSTR(HTTP_SCRIPT_COUNTER));
       page.replace(F("<body>"), F("<body onload='u()'>"));
       page += FPSTR(HTTP_COUNTER);
     }
@@ -504,7 +534,6 @@ void WebRestart(uint8_t type)
   AddLog_P(LOG_LEVEL_DEBUG, S_LOG_HTTP, S_RESTART);
 
   String page = FPSTR(HTTP_HEAD);
-  page += FPSTR(HTTP_HEAD_RELOAD);
   page += FPSTR(HTTP_HEAD_STYLE);
 
   if (type) {
@@ -525,6 +554,7 @@ void WebRestart(uint8_t type)
   } else {
     page += FPSTR(HTTP_BTN_MAIN);
   }
+  page.replace(F("</script>"), FPSTR(HTTP_SCRIPT_RELOAD));
   ShowPage(page);
 
   ShowWebSource(SRC_WEBGUI);
@@ -533,7 +563,7 @@ void WebRestart(uint8_t type)
 
 /*********************************************************************************************/
 
-void HandleWifiLogin()
+void HandleWifiLogin(void)
 {
   String page = FPSTR(HTTP_HEAD);
   page.replace(F("{v}"), FPSTR( D_CONFIGURE_WIFI ));
@@ -542,7 +572,7 @@ void HandleWifiLogin()
   ShowPage(page, false);  // false means show page no matter if the client has or has not credentials
 }
 
-void HandleRoot()
+void HandleRoot(void)
 {
   AddLog_P(LOG_LEVEL_DEBUG, S_LOG_HTTP, S_MAIN_MENU);
 
@@ -577,6 +607,7 @@ void HandleRoot()
     char stemp[10];
     String page = FPSTR(HTTP_HEAD);
     page.replace(F("{v}"), FPSTR(S_MAIN_MENU));
+    page += FPSTR(HTTP_SCRIPT_ROOT);
     page += FPSTR(HTTP_HEAD_STYLE);
     page.replace(F("<body>"), F("<body onload='la()'>"));
 
@@ -640,7 +671,7 @@ void HandleRoot()
   }
 }
 
-void HandleAjaxStatusRefresh()
+void HandleAjaxStatusRefresh(void)
 {
   if (!WebAuthenticate()) { return WebServer->requestAuthentication(); }
 
@@ -710,7 +741,7 @@ void HandleAjaxStatusRefresh()
   WebServer->send(200, FPSTR(HDR_CTYPE_HTML), mqtt_data);
 }
 
-boolean HttpUser()
+boolean HttpUser(void)
 {
   boolean status = (HTTP_USER == webserver_state);
   if (status) { HandleRoot(); }
@@ -721,7 +752,7 @@ boolean HttpUser()
 
 #ifndef BE_MINIMAL
 
-void HandleConfiguration()
+void HandleConfiguration(void)
 {
   if (HttpUser()) { return; }
   if (!WebAuthenticate()) { return WebServer->requestAuthentication(); }
@@ -744,12 +775,10 @@ void HandleConfiguration()
 
 /*-------------------------------------------------------------------------------------------*/
 
-void HandleModuleConfiguration()
+void HandleModuleConfiguration(void)
 {
   if (HttpUser()) { return; }
   if (!WebAuthenticate()) { return WebServer->requestAuthentication(); }
-
-  AddLog_P(LOG_LEVEL_DEBUG, S_LOG_HTTP, S_CONFIGURE_MODULE);
 
   if (WebServer->hasArg("save")) {
     ModuleSaveSettings();
@@ -759,39 +788,42 @@ void HandleModuleConfiguration()
 
   char stemp[20];
   uint8_t midx;
+  mytmplt cmodule;
+  memcpy_P(&cmodule, &kModules[Settings.module], sizeof(cmodule));
+
+  if (WebServer->hasArg("m")) {
+    String page = "";
+    for (byte i = 0; i < MAXMODULE; i++) {
+      midx = pgm_read_byte(kModuleNiceList + i);
+      snprintf_P(stemp, sizeof(stemp), kModules[midx].name);
+      snprintf_P(mqtt_data, sizeof(mqtt_data), HTTP_SCRIPT_MODULE3, midx, midx +1, stemp);
+      page += mqtt_data;
+    }
+    page += "}3";  // String separator means do not use "}3" in Module name and Sensor name
+    for (byte j = 0; j < sizeof(kGpioNiceList); j++) {
+      midx = pgm_read_byte(kGpioNiceList + j);
+      if (!GetUsedInModule(midx, cmodule.gp.io)) {
+        snprintf_P(mqtt_data, sizeof(mqtt_data), HTTP_SCRIPT_MODULE3, midx, midx, GetTextIndexed(stemp, sizeof(stemp), midx, kSensorNames));
+        page += mqtt_data;
+      }
+    }
+    WebServer->send(200, FPSTR(HDR_CTYPE_PLAIN), page);
+    return;
+  }
+
+  AddLog_P(LOG_LEVEL_DEBUG, S_LOG_HTTP, S_CONFIGURE_MODULE);
 
   String page = FPSTR(HTTP_HEAD);
   page.replace(F("{v}"), FPSTR(S_CONFIGURE_MODULE));
   page += FPSTR(HTTP_SCRIPT_MODULE1);
-  for (byte i = 0; i < MAXMODULE; i++) {
-    midx = pgm_read_byte(kModuleNiceList + i);
-    snprintf_P(stemp, sizeof(stemp), kModules[midx].name);
-    snprintf_P(mqtt_data, sizeof(mqtt_data), HTTP_SCRIPT_MODULE2, midx, midx +1, stemp);
-    page += mqtt_data;
-  }
-  page += FPSTR(HTTP_SCRIPT_MODULE3);
-  snprintf_P(mqtt_data, sizeof(mqtt_data), PSTR("sk(%d,99);o0=\""), Settings.module);  // g99
-  page += mqtt_data;
-
-  mytmplt cmodule;
-  memcpy_P(&cmodule, &kModules[Settings.module], sizeof(cmodule));
-  for (byte j = 0; j < sizeof(kGpioNiceList); j++) {
-    midx = pgm_read_byte(kGpioNiceList + j);
-    if (!GetUsedInModule(midx, cmodule.gp.io)) {
-      snprintf_P(mqtt_data, sizeof(mqtt_data), HTTP_SCRIPT_MODULE2, midx, midx, GetTextIndexed(stemp, sizeof(stemp), midx, kSensorNames));
-      page += mqtt_data;
-    }
-  }
-  page += FPSTR(HTTP_SCRIPT_MODULE3);
-
+  page.replace(F("}4"), String(Settings.module));
   for (byte i = 0; i < MAX_GPIO_PIN; i++) {
     if (GPIO_USER == ValidGPIO(i, cmodule.gp.io[i])) {
       snprintf_P(mqtt_data, sizeof(mqtt_data), PSTR("sk(%d,%d);"), my_module.gp.io[i], i);  // g0 - g16
       page += mqtt_data;
     }
   }
-  page += F("}");
-
+  page += FPSTR(HTTP_SCRIPT_MODULE2);
   page += FPSTR(HTTP_HEAD_STYLE);
   page.replace(F("<body>"), F("<body onload='sl()'>"));
   page += FPSTR(HTTP_FORM_MODULE);
@@ -812,7 +844,7 @@ void HandleModuleConfiguration()
   ShowPage(page);
 }
 
-void ModuleSaveSettings()
+void ModuleSaveSettings(void)
 {
   char tmp[100];
   char stemp[TOPSZ];
@@ -854,7 +886,7 @@ String htmlEscape(String s)
     return s;
 }
 
-void HandleWifiConfiguration()
+void HandleWifiConfiguration(void)
 {
   if (HttpUser()) { return; }
   if (!WebAuthenticate()) { return WebServer->requestAuthentication(); }
@@ -869,6 +901,7 @@ void HandleWifiConfiguration()
 
   String page = FPSTR(HTTP_HEAD);
   page.replace(F("{v}"), FPSTR(S_CONFIGURE_WIFI));
+  page += FPSTR(HTTP_SCRIPT_WIFI);
   page += FPSTR(HTTP_HEAD_STYLE);
 
   if (WebServer->hasArg("scan")) {
@@ -957,7 +990,7 @@ void HandleWifiConfiguration()
   ShowPage(page, !(HTTP_MANAGER == webserver_state));
 }
 
-void WifiSaveSettings()
+void WifiSaveSettings(void)
 {
   char tmp[100];
 
@@ -981,7 +1014,7 @@ void WifiSaveSettings()
 
 /*-------------------------------------------------------------------------------------------*/
 
-void HandleLoggingConfiguration()
+void HandleLoggingConfiguration(void)
 {
   if (HttpUser()) { return; }
   if (!WebAuthenticate()) { return WebServer->requestAuthentication(); }
@@ -1036,7 +1069,7 @@ void HandleLoggingConfiguration()
   ShowPage(page);
 }
 
-void LoggingSaveSettings()
+void LoggingSaveSettings(void)
 {
   char tmp[100];
 
@@ -1064,7 +1097,7 @@ void LoggingSaveSettings()
 
 /*-------------------------------------------------------------------------------------------*/
 
-void HandleOtherConfiguration()
+void HandleOtherConfiguration(void)
 {
   if (HttpUser()) { return; }
   if (!WebAuthenticate()) { return WebServer->requestAuthentication(); }
@@ -1109,7 +1142,7 @@ void HandleOtherConfiguration()
   ShowPage(page);
 }
 
-void OtherSaveSettings()
+void OtherSaveSettings(void)
 {
   char tmp[100];
   char stemp[TOPSZ];
@@ -1135,7 +1168,7 @@ void OtherSaveSettings()
 
 /*-------------------------------------------------------------------------------------------*/
 
-void HandleBackupConfiguration()
+void HandleBackupConfiguration(void)
 {
   if (HttpUser()) { return; }
   if (!WebAuthenticate()) { return WebServer->requestAuthentication(); }
@@ -1179,7 +1212,7 @@ void HandleBackupConfiguration()
 
 /*-------------------------------------------------------------------------------------------*/
 
-void HandleResetConfiguration()
+void HandleResetConfiguration(void)
 {
   if (HttpUser()) { return; }
   if (!WebAuthenticate()) { return WebServer->requestAuthentication(); }
@@ -1200,7 +1233,7 @@ void HandleResetConfiguration()
   ExecuteWebCommand(svalue, SRC_WEBGUI);
 }
 
-void HandleRestoreConfiguration()
+void HandleRestoreConfiguration(void)
 {
   if (HttpUser()) { return; }
   if (!WebAuthenticate()) { return WebServer->requestAuthentication(); }
@@ -1221,7 +1254,7 @@ void HandleRestoreConfiguration()
 
 /*-------------------------------------------------------------------------------------------*/
 
-void HandleInformation()
+void HandleInformation(void)
 {
   if (HttpUser()) { return; }
   if (!WebAuthenticate()) { return WebServer->requestAuthentication(); }
@@ -1342,7 +1375,7 @@ void HandleInformation()
 
 /*-------------------------------------------------------------------------------------------*/
 
-void HandleUpgradeFirmware()
+void HandleUpgradeFirmware(void)
 {
   if (HttpUser()) { return; }
   if (!WebAuthenticate()) { return WebServer->requestAuthentication(); }
@@ -1362,7 +1395,7 @@ void HandleUpgradeFirmware()
   upload_file_type = UPL_TASMOTA;
 }
 
-void HandleUpgradeFirmwareStart()
+void HandleUpgradeFirmwareStart(void)
 {
   if (HttpUser()) { return; }
   if (!WebAuthenticate()) { return WebServer->requestAuthentication(); }
@@ -1384,13 +1417,14 @@ void HandleUpgradeFirmwareStart()
   page += F("<div style='text-align:center;'><b>" D_UPGRADE_STARTED " ...</b></div>");
   page += FPSTR(HTTP_MSG_RSTRT);
   page += FPSTR(HTTP_BTN_MAIN);
+//  page.replace(F("</script>"), FPSTR(HTTP_SCRIPT_RELOAD));
   ShowPage(page);
 
   snprintf_P(svalue, sizeof(svalue), PSTR(D_CMND_UPGRADE " 1"));
   ExecuteWebCommand(svalue, SRC_WEBGUI);
 }
 
-void HandleUploadDone()
+void HandleUploadDone(void)
 {
   if (HttpUser()) { return; }
   if (!WebAuthenticate()) { return WebServer->requestAuthentication(); }
@@ -1434,6 +1468,7 @@ void HandleUploadDone()
   } else {
     page += F("green'>" D_SUCCESSFUL "</font></b><br/>");
     page += FPSTR(HTTP_MSG_RSTRT);
+    page.replace(F("</script>"), FPSTR(HTTP_SCRIPT_RELOAD_OTA)); // Refesh main web ui after OTA upgrade
     ShowWebSource(SRC_WEBGUI);
     restart_flag = 2;  // Always restart to re-enable disabled features during update
   }
@@ -1443,7 +1478,7 @@ void HandleUploadDone()
   ShowPage(page);
 }
 
-void HandleUploadLoop()
+void HandleUploadLoop(void)
 {
   // Based on ESP8266HTTPUpdateServer.cpp uses ESP8266WebServer Parsing.cpp and Cores Updater.cpp (Update)
   boolean _serialoutput = (LOG_LEVEL_DEBUG <= seriallog_level);
@@ -1517,7 +1552,7 @@ void HandleUploadLoop()
             upload_error = 4;  // Program flash size is larger than real flash size
             return;
           }
-          upload.buf[2] = 3;  // Force DOUT - ESP8285
+//          upload.buf[2] = 3;  // Force DOUT - ESP8285
         }
       }
     }
@@ -1637,7 +1672,7 @@ void HandleUploadLoop()
 
 /*-------------------------------------------------------------------------------------------*/
 
-void HandlePreflightRequest()
+void HandlePreflightRequest(void)
 {
   WebServer->sendHeader(F("Access-Control-Allow-Origin"), F("*"));
   WebServer->sendHeader(F("Access-Control-Allow-Methods"), F("GET, POST"));
@@ -1647,7 +1682,7 @@ void HandlePreflightRequest()
 
 /*-------------------------------------------------------------------------------------------*/
 
-void HandleHttpCommand()
+void HandleHttpCommand(void)
 {
   if (HttpUser()) { return; }
 //  if (!WebAuthenticate()) { return WebServer->requestAuthentication(); }
@@ -1707,7 +1742,7 @@ void HandleHttpCommand()
 
 /*-------------------------------------------------------------------------------------------*/
 
-void HandleConsole()
+void HandleConsole(void)
 {
   if (HttpUser()) { return; }
   if (!WebAuthenticate()) { return WebServer->requestAuthentication(); }
@@ -1723,7 +1758,7 @@ void HandleConsole()
   ShowPage(page);
 }
 
-void HandleAjaxConsoleRefresh()
+void HandleAjaxConsoleRefresh(void)
 {
   if (HttpUser()) { return; }
   if (!WebAuthenticate()) { return WebServer->requestAuthentication(); }
@@ -1782,7 +1817,7 @@ void HandleAjaxConsoleRefresh()
 
 /********************************************************************************************/
 
-void HandleNotFound()
+void HandleNotFound(void)
 {
 //  snprintf_P(log_data, sizeof(log_data), PSTR(D_LOG_HTTP "Not fount (%s)"), WebServer->uri().c_str());
 //  AddLog(LOG_LEVEL_DEBUG);
@@ -1807,7 +1842,7 @@ void HandleNotFound()
 }
 
 /* Redirect to captive portal if we got a request for another domain. Return true in that case so the page handler do not try to handle the request again. */
-boolean CaptivePortal()
+boolean CaptivePortal(void)
 {
   if ((HTTP_MANAGER == webserver_state) && !ValidIpAddress(WebServer->hostHeader())) {
     AddLog_P(LOG_LEVEL_DEBUG, PSTR(D_LOG_HTTP D_REDIRECTED));
@@ -1868,9 +1903,11 @@ String UrlEncode(const String& text)
 
 int WebSend(char *buffer)
 {
-  // http://192.168.178.86:80/cm?user=admin&password=joker&cmnd=POWER1 ON
-  // http://192.168.178.86:80/cm?cmnd=POWER1 ON
-  // [192.168.178.86:80,admin:joker] POWER1 ON
+  /* [sonoff] POWER1 ON                                               --> Sends http://sonoff/cm?cmnd=POWER1 ON
+   * [192.168.178.86:80,admin:joker] POWER1 ON                        --> Sends http://hostname:80/cm?user=admin&password=joker&cmnd=POWER1 ON
+   * [sonoff] /any/link/starting/with/a/slash.php?log=123             --> Sends http://sonoff/any/link/starting/with/a/slash.php?log=123
+   * [sonoff,admin:joker] /any/link/starting/with/a/slash.php?log=123 --> Sends http://sonoff/any/link/starting/with/a/slash.php?log=123
+   */
 
   char *host;
   char *port;
@@ -1880,31 +1917,38 @@ int WebSend(char *buffer)
   uint16_t nport = 80;
   int status = 1;                             // Wrong parameters
 
-  host = strtok_r(buffer, "]", &command);     // buffer = [192.168.178.86:80,admin:joker] POWER1 ON
+                                              // buffer = |  [  192.168.178.86  :  80  ,  admin  :  joker  ]    POWER1 ON   |
+  host = strtok_r(buffer, "]", &command);     // host = |  [  192.168.178.86  :  80  ,  admin  :  joker  |, command = |    POWER1 ON   |
   if (host && command) {
-    host = LTrim(host);
-    host++;  // Skip [
-    host = strtok_r(host, ",", &user);        // host = 192.168.178.86:80,admin:joker > 192.168.178.86:80
-    host = strtok_r(host, ":", &port);        // host = 192.168.178.86:80 > 192.168.178.86
-    if (user) {
-      user = strtok_r(user, ":", &password);  // user = admin:joker > admin
+    host = Trim(host);                        // host = |[  192.168.178.86  :  80  ,  admin  :  joker|
+    host++;                                   // host = |  192.168.178.86  :  80  ,  admin  :  joker| - Skip [
+    host = strtok_r(host, ",", &user);        // host = |  192.168.178.86  :  80  |, user = |  admin  :  joker|
+    host = strtok_r(host, ":", &port);        // host = |  192.168.178.86  |, port = |  80  |
+    host = Trim(host);                        // host = |192.168.178.86|
+    if (port) {
+      port = Trim(port);                      // port = |80|
+      nport = atoi(port);
     }
-
-//snprintf_P(log_data, sizeof(log_data), PSTR("DBG: Buffer |%X|, Host |%X|, Port |%X|, User |%X|, Password |%X|, Command |%X|"), buffer, host, port, user, password, command);
-//AddLog(LOG_LEVEL_DEBUG);
-
-    if (port) { nport = atoi(port); }
+    if (user) {
+      user = strtok_r(user, ":", &password);  // user = |  admin  |, password = |  joker|
+      user = Trim(user);                      // user = |admin|
+      if (password) { password = Trim(password); }  // password = |joker|
+    }
+    command = Trim(command);                  // command = |POWER1 ON| or |/any/link/starting/with/a/slash.php?log=123|
 
     String nuri = "";
-    if (user && password) {
-      nuri += F("user=");
-      nuri += user;
-      nuri += F("&password=");
-      nuri += password;
-      nuri += F("&");
+    if (command[0] != '/') {
+      nuri = "/cm?";
+      if (user && password) {
+        nuri += F("user=");
+        nuri += user;
+        nuri += F("&password=");
+        nuri += password;
+        nuri += F("&");
+      }
+      nuri += F("cmnd=");
     }
-    nuri += F("cmnd=");
-    nuri += LTrim(command);
+    nuri += command;
     String uri = UrlEncode(nuri);
 
     IPAddress host_ip;
@@ -1920,15 +1964,16 @@ int WebSend(char *buffer)
       }
 
       if (connected) {
-        String url = F("GET /cm?");
+        String url = F("GET ");
         url += uri;
-        url += F(" HTTP/1.1\r\n Host: ");
-        url += IPAddress(host_ip).toString();
+        url += F(" HTTP/1.1\r\nHost: ");
+//        url += IPAddress(host_ip).toString();
+        url += host;   // https://tools.ietf.org/html/rfc7230#section-5.4 (#4331)
         if (port) {
-          url += F(" \r\n Port: ");
+          url += F(":");
           url += port;
         }
-        url += F(" \r\n Connection: close\r\n\r\n");
+        url += F("\r\nConnection: close\r\n\r\n");
 
 //snprintf_P(log_data, sizeof(log_data), PSTR("DBG: Url |%s|"), url.c_str());
 //AddLog(LOG_LEVEL_DEBUG);
@@ -1953,7 +1998,7 @@ enum WebCommands { CMND_WEBSERVER, CMND_WEBPASSWORD, CMND_WEBLOG, CMND_WEBREFRES
 const char kWebCommands[] PROGMEM = D_CMND_WEBSERVER "|" D_CMND_WEBPASSWORD "|" D_CMND_WEBLOG "|" D_CMND_WEBREFRESH "|" D_CMND_WEBSEND "|" D_CMND_EMULATION ;
 const char kWebSendStatus[] PROGMEM = D_JSON_DONE "|" D_JSON_WRONG_PARAMETERS "|" D_JSON_CONNECT_FAILED "|" D_JSON_HOST_NOT_FOUND ;
 
-bool WebCommand()
+bool WebCommand(void)
 {
   char command[CMDSZ];
   bool serviced = true;
@@ -2018,10 +2063,12 @@ boolean Xdrv01(byte function)
 
   switch (function) {
     case FUNC_LOOP:
-      PollDnsWebserver();
+      if (!global_state.wifi_down) {
+        PollDnsWebserver();
 #ifdef USE_EMULATION
-      if (Settings.flag2.emulation) PollUdp();
+        if (Settings.flag2.emulation) PollUdp();
 #endif  // USE_EMULATION
+      }
       break;
     case FUNC_COMMAND:
       result = WebCommand();
