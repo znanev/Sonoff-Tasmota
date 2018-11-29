@@ -72,7 +72,7 @@ typedef union {                            // Restricted by MISRA-C Rule 18.4 bu
     uint32_t use_wifi_scan : 1;            // bit 6 (v6.3.0.10)
     uint32_t use_wifi_rescan : 1;          // bit 7 (v6.3.0.10)
     uint32_t receive_raw : 1;              // bit 8 (v6.3.0.11)
-    uint32_t spare09 : 1;
+    uint32_t hass_tele_as_result : 1;      // bit 9 (v6.3.0.13)
     uint32_t spare10 : 1;
     uint32_t spare11 : 1;
     uint32_t spare12 : 1;
@@ -107,9 +107,7 @@ typedef union {
     uint32_t spare03 : 1;
     uint32_t spare04 : 1;
     uint32_t spare05 : 1;
-    uint32_t spare06 : 1;
-    uint32_t spare07 : 1;
-    uint32_t spare08 : 1;
+    uint32_t calc_resolution : 3;
     uint32_t weight_resolution : 2;
     uint32_t frequency_resolution : 2;
     uint32_t axis_resolution : 2;
