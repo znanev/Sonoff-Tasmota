@@ -156,7 +156,7 @@ void GetFeatures(void)
 #ifdef USE_DISPLAY_ILI9341
   feature_drv2 |= 0x00000400;  // xdsp_04_ili9341.ino
 #endif
-#ifdef USE_DISPLAY_EPAPER
+#ifdef USE_DISPLAY_EPAPER_29
   feature_drv2 |= 0x00000800;  // xdsp_05_epaper.ino
 #endif
 #ifdef USE_DISPLAY_SH1106
@@ -361,10 +361,15 @@ void GetFeatures(void)
 #ifdef USE_MGC3130
   feature_sns2 |= 0x00004000;  // xsns_36_mgc3130.ino
 #endif
-
-//  feature_sns2 |= 0x00008000;
-//  feature_sns2 |= 0x00010000;
-//  feature_sns2 |= 0x00020000;
+#ifdef USE_RF_SENSOR
+  feature_sns2 |= 0x00008000;  // xsns_37_rfsensor.ino
+#endif
+#ifdef USE_THEO_V2
+  feature_sns2 |= 0x00010000;
+#endif
+#ifdef USE_ALECTO_V2
+  feature_sns2 |= 0x00020000;
+#endif
 //  feature_sns2 |= 0x00040000;
 //  feature_sns2 |= 0x00080000;
 //  feature_sns2 |= 0x00100000;
