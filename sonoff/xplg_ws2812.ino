@@ -1,7 +1,7 @@
 /*
   xplg_ws2812.ino - ws2812 led string support for Sonoff-Tasmota
 
-  Copyright (C) 2018  Heiko Krupp and Theo Arends
+  Copyright (C) 2019  Heiko Krupp and Theo Arends
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -172,7 +172,7 @@ void Ws2812Clock(void)
   Ws2812UpdateHand((RtcTime.minute * 1000) / clksize, WS_MINUTE);
   Ws2812UpdateHand(((RtcTime.hour % 12) * (5000 / clksize)) + ((RtcTime.minute * 1000) / (12 * clksize)), WS_HOUR);
   if (Settings.ws_color[WS_MARKER][WS_RED] + Settings.ws_color[WS_MARKER][WS_GREEN] + Settings.ws_color[WS_MARKER][WS_BLUE]) {
-    for (byte i = 0; i < 12; i++) {
+    for (uint8_t i = 0; i < 12; i++) {
       Ws2812UpdateHand((i * 5000) / clksize, WS_MARKER);
     }
   }
@@ -395,7 +395,7 @@ char* Ws2812GetColor(uint16_t led, char* scolor)
   sl_ledcolor[1] = lcolor.G;
   sl_ledcolor[2] = lcolor.B;
   scolor[0] = '\0';
-  for (byte i = 0; i < light_subtype; i++) {
+  for (uint8_t i = 0; i < light_subtype; i++) {
     if (Settings.flag.decimal_text) {
       snprintf_P(scolor, 25, PSTR("%s%s%d"), scolor, (i > 0) ? "," : "", sl_ledcolor[i]);
     } else {

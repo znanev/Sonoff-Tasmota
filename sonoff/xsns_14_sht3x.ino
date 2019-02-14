@@ -1,7 +1,7 @@
 /*
   xsns_14_sht3x.ino - SHT3X temperature and humidity sensor support for Sonoff-Tasmota
 
-  Copyright (C) 2018  Theo Arends
+  Copyright (C) 2019  Theo Arends
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -82,7 +82,7 @@ void Sht3xDetect(void)
 
   float t;
   float h;
-  for (byte i = 0; i < SHT3X_MAX_SENSORS; i++) {
+  for (uint8_t i = 0; i < SHT3X_MAX_SENSORS; i++) {
     if (Sht3xRead(t, h, sht3x_addresses[i])) {
       sht3x_sensors[sht3x_count].address = sht3x_addresses[i];
       GetTextIndexed(sht3x_sensors[sht3x_count].types, sizeof(sht3x_sensors[sht3x_count].types), i, kShtTypes);
@@ -93,20 +93,20 @@ void Sht3xDetect(void)
   }
 }
 
-void Sht3xShow(boolean json)
+void Sht3xShow(bool json)
 {
   if (sht3x_count) {
     float t;
     float h;
-    char temperature[10];
-    char humidity[10];
     char types[11];
-    for (byte i = 0; i < sht3x_count; i++) {
+    for (uint8_t i = 0; i < sht3x_count; i++) {
       if (Sht3xRead(t, h, sht3x_sensors[i].address)) {
 
         if (0 == i) { SetGlobalValues(t, h); }
 
+        char temperature[33];
         dtostrfd(t, Settings.flag2.temperature_resolution, temperature);
+        char humidity[33];
         dtostrfd(h, Settings.flag2.humidity_resolution, humidity);
         snprintf_P(types, sizeof(types), PSTR("%s-0x%02X"), sht3x_sensors[i].types, sht3x_sensors[i].address);  // "SHT3X-0xXX"
 
@@ -140,9 +140,9 @@ void Sht3xShow(boolean json)
  * Interface
 \*********************************************************************************************/
 
-boolean Xsns14(byte function)
+bool Xsns14(uint8_t function)
 {
-  boolean result = false;
+  bool result = false;
 
   if (i2c_flg) {
     switch (function) {

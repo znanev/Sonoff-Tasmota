@@ -1,7 +1,7 @@
 /*
   xdrv_18_armtronix_dimmers.ino - Armtronix dimmers support for Sonoff-Tasmota
 
-  Copyright (C) 2018  wvdv2002 and Theo Arends
+  Copyright (C) 2019  wvdv2002 and Theo Arends
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -31,7 +31,7 @@
 
 TasmotaSerial *ArmtronixSerial = nullptr;
 
-boolean armtronix_ignore_dim = false;            // Flag to skip serial send to prevent looping when processing inbound states from the faceplate interaction
+bool armtronix_ignore_dim = false;            // Flag to skip serial send to prevent looping when processing inbound states from the faceplate interaction
 int8_t armtronix_wifi_state = -2;                // Keep MCU wifi-status in sync with WifiState()
 int8_t armtronix_dimState[2];                    // Dimmer state values.
 int8_t armtronix_knobState[2];                   // Dimmer state values.
@@ -40,7 +40,7 @@ int8_t armtronix_knobState[2];                   // Dimmer state values.
  * Internal Functions
 \*********************************************************************************************/
 
-boolean ArmtronixSetChannels(void)
+bool ArmtronixSetChannels(void)
 {
   LightSerial2Duty(((uint8_t*)XdrvMailbox.data)[0], ((uint8_t*)XdrvMailbox.data)[1]);
   return true;
@@ -84,7 +84,7 @@ void ArmtronixRequestState(void)
  * API Functions
 \*********************************************************************************************/
 
-boolean ArmtronixModuleSelected(void)
+bool ArmtronixModuleSelected(void)
 {
   light_type = LT_SERIAL2;
   return true;
@@ -155,11 +155,11 @@ void ArmtronixSetWifiLed(void)
   snprintf_P(log_data, sizeof(log_data), "ARM: Set WiFi LED to state %d (%d)", wifi_state, WifiState());
   AddLog(LOG_LEVEL_DEBUG);
 
-  char state = '0' + (wifi_state & 1 > 0);
+  char state = '0' + ((wifi_state & 1) > 0);
   ArmtronixSerial->print("Setled:");
   ArmtronixSerial->write(state);
   ArmtronixSerial->write(',');
-  state = '0' + (wifi_state & 2 > 0);
+  state = '0' + ((wifi_state & 2) > 0);
   ArmtronixSerial->write(state);
   ArmtronixSerial->write(10);
   armtronix_wifi_state = WifiState();
@@ -169,11 +169,11 @@ void ArmtronixSetWifiLed(void)
  * Interface
 \*********************************************************************************************/
 
-boolean Xdrv18(byte function)
+bool Xdrv18(uint8_t function)
 {
-  boolean result = false;
+  bool result = false;
 
-  if (ARMTRONIX_DIMMERS == Settings.module) {
+  if (ARMTRONIX_DIMMERS == my_module_type) {
     switch (function) {
       case FUNC_MODULE_INIT:
         result = ArmtronixModuleSelected();

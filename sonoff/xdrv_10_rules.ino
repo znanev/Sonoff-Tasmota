@@ -1,7 +1,7 @@
 /*
   xdrv_10_rules.ino - rule support for Sonoff-Tasmota
 
-  Copyright (C) 2018  ESP Easy Group and Theo Arends
+  Copyright (C) 2019  ESP Easy Group and Theo Arends
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -78,6 +78,18 @@
 
 #define D_JSON_INITIATED "Initiated"
 
+#define COMPARE_OPERATOR_NONE            -1
+#define COMPARE_OPERATOR_EQUAL            0
+#define COMPARE_OPERATOR_BIGGER           1
+#define COMPARE_OPERATOR_SMALLER          2
+#define COMPARE_OPERATOR_EXACT_DIVISION   3
+#define COMPARE_OPERATOR_NUMBER_EQUAL     4
+#define COMPARE_OPERATOR_NOT_EQUAL        5
+#define COMPARE_OPERATOR_BIGGER_EQUAL     6
+#define COMPARE_OPERATOR_SMALLER_EQUAL    7
+#define MAXIMUM_COMPARE_OPERATOR          COMPARE_OPERATOR_SMALLER_EQUAL
+const char kCompareOperators[] PROGMEM = "=\0>\0<\0|\0==!=>=<=";
+
 enum RulesCommands { CMND_RULE, CMND_RULETIMER, CMND_EVENT, CMND_VAR, CMND_MEM, CMND_ADD, CMND_SUB, CMND_MULT, CMND_SCALE, CMND_CALC_RESOLUTION };
 const char kRulesCommands[] PROGMEM = D_CMND_RULE "|" D_CMND_RULETIMER "|" D_CMND_EVENT "|" D_CMND_VAR "|" D_CMND_MEM "|" D_CMND_ADD "|" D_CMND_SUB "|" D_CMND_MULT "|" D_CMND_SCALE "|" D_CMND_CALC_RESOLUTION ;
 
@@ -94,11 +106,19 @@ uint8_t rules_trigger_count[MAX_RULE_SETS] = { 0 };
 uint8_t rules_teleperiod = 0;
 
 char event_data[100];
-char vars[MAX_RULE_VARS][10] = { 0 };
+char vars[MAX_RULE_VARS][33] = { 0 };
+#if (MAX_RULE_VARS>16)
+#error MAX_RULE_VARS is bigger than 16
+#endif
+#if (MAX_RULE_MEMS>5)
+#error MAX_RULE_MEMS is bigger than 5
+#endif
+uint16_t vars_event = 0;
+uint8_t mems_event = 0;
 
 /*******************************************************************************************/
 
-bool RulesRuleMatch(byte rule_set, String &event, String &rule)
+bool RulesRuleMatch(uint8_t rule_set, String &event, String &rule)
 {
   // event = {"INA219":{"Voltage":4.494,"Current":0.020,"Power":0.089}}
   // event = {"System":{"Boot":1}}
@@ -120,39 +140,28 @@ bool RulesRuleMatch(byte rule_set, String &event, String &rule)
 
   String rule_name = rule.substring(pos +1);           // "CURRENT>0.100" or "BOOT" or "%var1%" or "MINUTE|5"
 
-  char compare = ' ';
-  pos = rule_name.indexOf(">");
-  if (pos > 0) {
-    compare = '>';
-  } else {
-    pos = rule_name.indexOf("<");
-    if (pos > 0) {
-      compare = '<';
-    } else {
-      pos = rule_name.indexOf("=");
-      if (pos > 0) {
-        compare = '=';
-      } else {
-        pos = rule_name.indexOf("|");                  // Modulo, cannot use % easily as it is used for variable detection
-        if (pos > 0) {
-          compare = '%';
-        }
-      }
+  char compare_operator[3];
+  int8_t compare = COMPARE_OPERATOR_NONE;
+  for (int8_t i = MAXIMUM_COMPARE_OPERATOR; i >= 0; i--) {
+    snprintf_P(compare_operator, sizeof(compare_operator), kCompareOperators + (i *2));
+    if ((pos = rule_name.indexOf(compare_operator)) > 0) {
+      compare = i;
+      break;
     }
   }
 
   char rule_svalue[CMDSZ] = { 0 };
   double rule_value = 0;
-  if (pos > 0) {
-    String rule_param = rule_name.substring(pos + 1);
-    for (byte i = 0; i < MAX_RULE_VARS; i++) {
+  if (compare != COMPARE_OPERATOR_NONE) {
+    String rule_param = rule_name.substring(pos + strlen(compare_operator));
+    for (uint8_t i = 0; i < MAX_RULE_VARS; i++) {
       snprintf_P(stemp, sizeof(stemp), PSTR("%%VAR%d%%"), i +1);
       if (rule_param.startsWith(stemp)) {
         rule_param = vars[i];
         break;
       }
     }
-    for (byte i = 0; i < MAX_RULE_MEMS; i++) {
+    for (uint8_t i = 0; i < MAX_RULE_MEMS; i++) {
       snprintf_P(stemp, sizeof(stemp), PSTR("%%MEM%d%%"), i +1);
       if (rule_param.startsWith(stemp)) {
         rule_param = Settings.mems[i];
@@ -166,6 +175,10 @@ bool RulesRuleMatch(byte rule_set, String &event, String &rule)
     snprintf_P(stemp, sizeof(stemp), PSTR("%%UPTIME%%"));
     if (rule_param.startsWith(stemp)) {
       rule_param = String(GetMinutesUptime());
+    }
+    snprintf_P(stemp, sizeof(stemp), PSTR("%%TIMESTAMP%%"));
+    if (rule_param.startsWith(stemp)) {
+      rule_param = GetDateAndTime(DT_LOCAL).c_str();
     }
 #if defined(USE_TIMERS) && defined(USE_SUNRISE)
     snprintf_P(stemp, sizeof(stemp), PSTR("%%SUNRISE%%"));
@@ -212,24 +225,32 @@ bool RulesRuleMatch(byte rule_set, String &event, String &rule)
     int int_value = int(value);
     int int_rule_value = int(rule_value);
     switch (compare) {
-      case '%':
-        if ((int_value > 0) && (int_rule_value > 0)) {
-          if ((int_value % int_rule_value) == 0) { match = true; }
-        }
+      case COMPARE_OPERATOR_EXACT_DIVISION:
+        match = (int_rule_value && (int_value % int_rule_value) == 0);
         break;
-      case '>':
-        if (value > rule_value) { match = true; }
+      case COMPARE_OPERATOR_EQUAL:
+        match = (!strcasecmp(str_value, rule_svalue));  // Compare strings - this also works for hexadecimals
         break;
-      case '<':
-        if (value < rule_value) { match = true; }
+      case COMPARE_OPERATOR_BIGGER:
+        match = (value > rule_value);
         break;
-      case '=':
-//        if (value == rule_value) { match = true; }     // Compare values - only decimals or partly hexadecimals
-        if (!strcasecmp(str_value, rule_svalue)) { match = true; }  // Compare strings - this also works for hexadecimals
+      case COMPARE_OPERATOR_SMALLER:
+        match = (value < rule_value);
         break;
-      case ' ':
-        match = true;                                  // Json value but not needed
+      case COMPARE_OPERATOR_NUMBER_EQUAL:
+        match = (value == rule_value);
         break;
+      case COMPARE_OPERATOR_NOT_EQUAL:
+        match = (value != rule_value);
+        break;
+      case COMPARE_OPERATOR_BIGGER_EQUAL:
+        match = (value >= rule_value);
+        break;
+      case COMPARE_OPERATOR_SMALLER_EQUAL:
+        match = (value <= rule_value);
+        break;
+      default:
+        match = true;
     }
   } else match = true;
 
@@ -250,7 +271,7 @@ bool RulesRuleMatch(byte rule_set, String &event, String &rule)
 
 /*******************************************************************************************/
 
-bool RuleSetProcess(byte rule_set, String &event_saved)
+bool RuleSetProcess(uint8_t rule_set, String &event_saved)
 {
   bool serviced = false;
   char stemp[10];
@@ -303,16 +324,17 @@ bool RuleSetProcess(byte rule_set, String &event_saved)
 //      if (!ucommand.startsWith("BACKLOG")) { commands = "backlog " + commands; }  // Always use Backlog to prevent power race exception
       if (ucommand.indexOf("EVENT ") != -1) { commands = "backlog " + commands; }  // Always use Backlog with event to prevent rule event loop exception
       commands.replace(F("%value%"), rules_event_value);
-      for (byte i = 0; i < MAX_RULE_VARS; i++) {
+      for (uint8_t i = 0; i < MAX_RULE_VARS; i++) {
         snprintf_P(stemp, sizeof(stemp), PSTR("%%var%d%%"), i +1);
         commands.replace(stemp, vars[i]);
       }
-      for (byte i = 0; i < MAX_RULE_MEMS; i++) {
+      for (uint8_t i = 0; i < MAX_RULE_MEMS; i++) {
         snprintf_P(stemp, sizeof(stemp), PSTR("%%mem%d%%"), i +1);
         commands.replace(stemp, Settings.mems[i]);
       }
       commands.replace(F("%time%"), String(GetMinutesPastMidnight()));
       commands.replace(F("%uptime%"), String(GetMinutesUptime()));
+      commands.replace(F("%timestamp%"), GetDateAndTime(DT_LOCAL).c_str());
 #if defined(USE_TIMERS) && defined(USE_SUNRISE)
       commands.replace(F("%sunrise%"), String(GetSunMinutes(0)));
       commands.replace(F("%sunset%"), String(GetSunMinutes(1)));
@@ -350,7 +372,7 @@ bool RulesProcessEvent(char *json_event)
 //snprintf_P(log_data, sizeof(log_data), PSTR("RUL: Event %s"), event_saved.c_str());
 //AddLog(LOG_LEVEL_DEBUG);
 
-  for (byte i = 0; i < MAX_RULE_SETS; i++) {
+  for (uint8_t i = 0; i < MAX_RULE_SETS; i++) {
     if (strlen(Settings.rules[i]) && bitRead(Settings.rule_enabled, i)) {
       if (RuleSetProcess(i, event_saved)) { serviced = true; }
     }
@@ -366,7 +388,7 @@ bool RulesProcess(void)
 void RulesInit(void)
 {
   rules_flag.data = 0;
-  for (byte i = 0; i < MAX_RULE_SETS; i++) {
+  for (uint8_t i = 0; i < MAX_RULE_SETS; i++) {
     if (Settings.rules[i][0] == '\0') {
       bitWrite(Settings.rule_enabled, i, 0);
       bitWrite(Settings.rule_once, i, 0);
@@ -383,7 +405,7 @@ void RulesEvery50ms(void)
     if (-1 == rules_new_power) { rules_new_power = power; }
     if (rules_new_power != rules_old_power) {
       if (rules_old_power != -1) {
-        for (byte i = 0; i < devices_present; i++) {
+        for (uint8_t i = 0; i < devices_present; i++) {
           uint8_t new_state = (rules_new_power >> i) &1;
           if (new_state != ((rules_old_power >> i) &1)) {
             snprintf_P(json_event, sizeof(json_event), PSTR("{\"Power%d\":{\"State\":%d}}"), i +1, new_state);
@@ -392,20 +414,20 @@ void RulesEvery50ms(void)
         }
       } else {
         // Boot time POWER OUTPUTS (Relays) Status
-        for (byte i = 0; i < devices_present; i++) {
+        for (uint8_t i = 0; i < devices_present; i++) {
           uint8_t new_state = (rules_new_power >> i) &1;
           snprintf_P(json_event, sizeof(json_event), PSTR("{\"Power%d\":{\"Boot\":%d}}"), i +1, new_state);
           RulesProcessEvent(json_event);
         }
         // Boot time SWITCHES Status
-        for (byte i = 0; i < MAX_SWITCHES; i++) {
+        for (uint8_t i = 0; i < MAX_SWITCHES; i++) {
 #ifdef USE_TM1638
           if ((pin[GPIO_SWT1 +i] < 99) || ((pin[GPIO_TM16CLK] < 99) && (pin[GPIO_TM16DIO] < 99) && (pin[GPIO_TM16STB] < 99))) {
 #else
           if (pin[GPIO_SWT1 +i] < 99) {
 #endif // USE_TM1638
-            boolean swm = ((FOLLOW_INV == Settings.switchmode[i]) || (PUSHBUTTON_INV == Settings.switchmode[i]) || (PUSHBUTTONHOLD_INV == Settings.switchmode[i]));
-            snprintf_P(json_event, sizeof(json_event), PSTR("{\"" D_JSON_SWITCH "%d\":{\"Boot\":%d}}"), i +1, (swm ^ lastwallswitch[i]));
+            bool swm = ((FOLLOW_INV == Settings.switchmode[i]) || (PUSHBUTTON_INV == Settings.switchmode[i]) || (PUSHBUTTONHOLD_INV == Settings.switchmode[i]));
+            snprintf_P(json_event, sizeof(json_event), PSTR("{\"" D_JSON_SWITCH "%d\":{\"Boot\":%d}}"), i +1, (swm ^ SwitchLastState(i)));
             RulesProcessEvent(json_event);
           }
         }
@@ -440,9 +462,29 @@ void RulesEvery50ms(void)
         event_data[0] ='\0';
       }
     }
+    else if (vars_event) {
+      for (uint8_t i = 0; i < MAX_RULE_VARS-1; i++) {
+        if (bitRead(vars_event, i)) {
+          bitClear(vars_event, i);
+          snprintf_P(json_event, sizeof(json_event), PSTR("{\"Var%d\":{\"State\":%s}}"), i+1, vars[i]);
+          RulesProcessEvent(json_event);
+          break;
+        }
+      }
+    }
+    else if (mems_event) {
+      for (uint8_t i = 0; i < MAX_RULE_MEMS-1; i++) {
+        if (bitRead(mems_event, i)) {
+          bitClear(mems_event, i);
+          snprintf_P(json_event, sizeof(json_event), PSTR("{\"Mem%d\":{\"State\":%s}}"), i+1, Settings.mems[i]);
+          RulesProcessEvent(json_event);
+          break;
+        }
+      }
+    }
     else if (rules_flag.data) {
       uint16_t mask = 1;
-      for (byte i = 0; i < MAX_RULES_FLAG; i++) {
+      for (uint8_t i = 0; i < MAX_RULES_FLAG; i++) {
         if (rules_flag.data & mask) {
           rules_flag.data ^= mask;
           json_event[0] = '\0';
@@ -496,7 +538,7 @@ void RulesEverySecond(void)
         RulesProcessEvent(json_event);
       }
     }
-    for (byte i = 0; i < MAX_RULE_TIMERS; i++) {
+    for (uint8_t i = 0; i < MAX_RULE_TIMERS; i++) {
       if (rules_timer[i] != 0L) {           // Timer active?
         if (TimeReached(rules_timer[i])) {  // Timer finished?
           rules_timer[i] = 0L;              // Turn off this timer
@@ -520,10 +562,10 @@ void RulesTeleperiod(void)
   rules_teleperiod = 0;
 }
 
-boolean RulesCommand(void)
+bool RulesCommand(void)
 {
   char command[CMDSZ];
-  boolean serviced = true;
+  bool serviced = true;
   uint8_t index = XdrvMailbox.index;
 
   int command_code = GetCommandCode(command, sizeof(command), XdrvMailbox.topic, kRulesCommands);
@@ -581,7 +623,7 @@ boolean RulesCommand(void)
       rules_timer[index -1] = (XdrvMailbox.payload > 0) ? millis() + (1000 * XdrvMailbox.payload) : 0;
     }
     mqtt_data[0] = '\0';
-    for (byte i = 0; i < MAX_RULE_TIMERS; i++) {
+    for (uint8_t i = 0; i < MAX_RULE_TIMERS; i++) {
       snprintf_P(mqtt_data, sizeof(mqtt_data), PSTR("%s%c\"T%d\":%d"), mqtt_data, (i) ? ',' : '{', i +1, (rules_timer[i]) ? (rules_timer[i] - millis()) / 1000 : 0);
     }
     snprintf_P(mqtt_data, sizeof(mqtt_data), PSTR("%s}"), mqtt_data);
@@ -595,12 +637,14 @@ boolean RulesCommand(void)
   else if ((CMND_VAR == command_code) && (index > 0) && (index <= MAX_RULE_VARS)) {
     if (XdrvMailbox.data_len > 0) {
       strlcpy(vars[index -1], ('"' == XdrvMailbox.data[0]) ? "" : XdrvMailbox.data, sizeof(vars[index -1]));
+      bitSet(vars_event, index -1);
     }
     snprintf_P(mqtt_data, sizeof(mqtt_data), S_JSON_COMMAND_INDEX_SVALUE, command, index, vars[index -1]);
   }
   else if ((CMND_MEM == command_code) && (index > 0) && (index <= MAX_RULE_MEMS)) {
     if (XdrvMailbox.data_len > 0) {
       strlcpy(Settings.mems[index -1], ('"' == XdrvMailbox.data[0]) ? "" : XdrvMailbox.data, sizeof(Settings.mems[index -1]));
+      bitSet(mems_event, index -1);
     }
     snprintf_P(mqtt_data, sizeof(mqtt_data), S_JSON_COMMAND_INDEX_SVALUE, command, index, Settings.mems[index -1]);
   }
@@ -614,6 +658,7 @@ boolean RulesCommand(void)
     if (XdrvMailbox.data_len > 0) {
       double tempvar = CharToDouble(vars[index -1]) + CharToDouble(XdrvMailbox.data);
       dtostrfd(tempvar, Settings.flag2.calc_resolution, vars[index -1]);
+      bitSet(vars_event, index -1);
     }
     snprintf_P(mqtt_data, sizeof(mqtt_data), S_JSON_COMMAND_INDEX_SVALUE, command, index, vars[index -1]);
   }
@@ -621,6 +666,7 @@ boolean RulesCommand(void)
     if (XdrvMailbox.data_len > 0) {
       double tempvar = CharToDouble(vars[index -1]) - CharToDouble(XdrvMailbox.data);
       dtostrfd(tempvar, Settings.flag2.calc_resolution, vars[index -1]);
+      bitSet(vars_event, index -1);
     }
     snprintf_P(mqtt_data, sizeof(mqtt_data), S_JSON_COMMAND_INDEX_SVALUE, command, index, vars[index -1]);
   }
@@ -628,6 +674,7 @@ boolean RulesCommand(void)
     if (XdrvMailbox.data_len > 0) {
       double tempvar = CharToDouble(vars[index -1]) * CharToDouble(XdrvMailbox.data);
       dtostrfd(tempvar, Settings.flag2.calc_resolution, vars[index -1]);
+      bitSet(vars_event, index -1);
     }
     snprintf_P(mqtt_data, sizeof(mqtt_data), S_JSON_COMMAND_INDEX_SVALUE, command, index, vars[index -1]);
   }
@@ -643,6 +690,7 @@ boolean RulesCommand(void)
         double toHigh = CharToDouble(subStr(sub_string, XdrvMailbox.data, ",", 5));
         double value = map_double(valueIN, fromLow, fromHigh, toLow, toHigh);
         dtostrfd(value, Settings.flag2.calc_resolution, vars[index -1]);
+        bitSet(vars_event, index -1);
       }
     }
     snprintf_P(mqtt_data, sizeof(mqtt_data), S_JSON_COMMAND_INDEX_SVALUE, command, index, vars[index -1]);
@@ -661,9 +709,9 @@ double map_double(double x, double in_min, double in_max, double out_min, double
  * Interface
 \*********************************************************************************************/
 
-boolean Xdrv10(byte function)
+bool Xdrv10(uint8_t function)
 {
-  boolean result = false;
+  bool result = false;
 
   switch (function) {
     case FUNC_PRE_INIT:

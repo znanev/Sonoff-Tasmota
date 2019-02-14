@@ -1,7 +1,7 @@
 /*
   xsns_37_rfsensor.ino - RF sensor receiver for Sonoff-Tasmota
 
-  Copyright (C) 2018  Theo Arends
+  Copyright (C) 2019  Theo Arends
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -49,10 +49,10 @@
 typedef struct RawSignalStruct                   // Variabelen geplaatst in struct zodat deze later eenvoudig kunnen worden weggeschreven naar SDCard
 {
   int  Number;                           // aantal bits, maal twee omdat iedere bit een mark en een space heeft.
-  byte Repeats;                          // Aantal maal dat de pulsreeks verzonden moet worden bij een zendactie.
-  byte Multiply;                         // Pulses[] * Multiply is de echte tijd van een puls in microseconden
+  uint8_t Repeats;                          // Aantal maal dat de pulsreeks verzonden moet worden bij een zendactie.
+  uint8_t Multiply;                         // Pulses[] * Multiply is de echte tijd van een puls in microseconden
   unsigned long Time;                    // Tijdstempel wanneer signaal is binnengekomen (millis())
-  byte Pulses[RFSNS_RAW_BUFFER_SIZE+2];  // Tabel met de gemeten pulsen in microseconden gedeeld door rfsns_raw_signal->Multiply. Dit scheelt helft aan RAM geheugen.
+  uint8_t Pulses[RFSNS_RAW_BUFFER_SIZE+2];  // Tabel met de gemeten pulsen in microseconden gedeeld door rfsns_raw_signal->Multiply. Dit scheelt helft aan RAM geheugen.
                                          // Om legacy redenen zit de eerste puls in element 1. Element 0 wordt dus niet gebruikt.
 } raw_signal_t;
 
@@ -65,7 +65,7 @@ uint8_t rfsns_any_sensor = 0;
  * Fetch signals from RF pin
 \*********************************************************************************************/
 
-bool RfSnsFetchSignal(byte DataPin, bool StateSignal)
+bool RfSnsFetchSignal(uint8_t DataPin, bool StateSignal)
 {
   uint8_t Fbit = digitalPinToBitMask(DataPin);
   uint8_t Fport = digitalPinToPort(DataPin);
@@ -179,17 +179,17 @@ void RfSnsAnalyzeTheov2(void)
 {
   if (rfsns_raw_signal->Number != RFSNS_THEOV2_PULSECOUNT) { return; }
 
-  byte Checksum;     // 8 bits Checksum over following bytes
-  byte Channel;      // 3 bits channel
-  byte Type;         // 5 bits type
-  byte Voltage;      // 8 bits Vcc like 45 = 4.5V, bit 8 is batt low
+  uint8_t Checksum;  // 8 bits Checksum over following bytes
+  uint8_t Channel;   // 3 bits channel
+  uint8_t Type;      // 5 bits type
+  uint8_t Voltage;   // 8 bits Vcc like 45 = 4.5V, bit 8 is batt low
   int Payload1;      // 16 bits
   int Payload2;      // 16 bits
 
-  byte b, bytes, bits, id;
+  uint8_t b, bytes, bits, id;
 
-  byte idx = 3;
-  byte chksum = 0;
+  uint8_t idx = 3;
+  uint8_t chksum = 0;
   for (bytes = 0; bytes < 7; bytes++) {
     b = 0;
     for (bits = 0; bits <= 7; bits++)
@@ -264,7 +264,7 @@ void RfSnsTheoV2Show(bool json)
     if (rfsns_theo_v2_t1[i].time) {
       char sensor[10];
       snprintf_P(sensor, sizeof(sensor), PSTR("TV2T1C%d"), i +1);
-      char voltage[10];
+      char voltage[33];
       dtostrfd((float)rfsns_theo_v2_t1[i].volt / 10, 1, voltage);
 
       if (rfsns_theo_v2_t1[i].time < LocalTime() - RFSNS_VALID_WINDOW) {
@@ -273,7 +273,7 @@ void RfSnsTheoV2Show(bool json)
             mqtt_data, sensor, GetDT(rfsns_theo_v2_t1[i].time).c_str(), voltage);
         }
       } else {
-        char temperature[10];
+        char temperature[33];
         dtostrfd(ConvertTemp((float)rfsns_theo_v2_t1[i].temp / 100), Settings.flag2.temperature_resolution, temperature);
 
         if (json) {
@@ -301,7 +301,7 @@ void RfSnsTheoV2Show(bool json)
     if (rfsns_theo_v2_t2[i].time) {
       char sensor[10];
       snprintf_P(sensor, sizeof(sensor), PSTR("TV2T2C%d"), i +1);
-      char voltage[10];
+      char voltage[33];
       dtostrfd((float)rfsns_theo_v2_t2[i].volt / 10, 1, voltage);
 
       if (rfsns_theo_v2_t2[i].time < LocalTime() - RFSNS_VALID_WINDOW) {
@@ -311,10 +311,10 @@ void RfSnsTheoV2Show(bool json)
         }
       } else {
         float temp = ConvertTemp((float)rfsns_theo_v2_t2[i].temp / 100);
-        char temperature[10];
-        dtostrfd(temp, Settings.flag2.temperature_resolution, temperature);
         float humi = (float)rfsns_theo_v2_t2[i].hum / 100;
-        char humidity[10];
+        char temperature[33];
+        dtostrfd(temp, Settings.flag2.temperature_resolution, temperature);
+        char humidity[33];
         dtostrfd(humi, Settings.flag2.humidity_resolution, humidity);
 
         if (json) {
@@ -438,23 +438,23 @@ void RfSnsAnalyzeAlectov2()
   if (!(((rfsns_raw_signal->Number >= RFSNS_ACH2010_MIN_PULSECOUNT) &&
          (rfsns_raw_signal->Number <= RFSNS_ACH2010_MAX_PULSECOUNT)) || (rfsns_raw_signal->Number == RFSNS_DKW2012_PULSECOUNT))) { return; }
 
-  byte c = 0;
-  byte rfbit;
-  byte data[9] = { 0 };
-  byte msgtype = 0;
-  byte rc = 0;
+  uint8_t c = 0;
+  uint8_t rfbit;
+  uint8_t data[9] = { 0 };
+  uint8_t msgtype = 0;
+  uint8_t rc = 0;
   int temp;
-  byte checksum = 0;
-  byte checksumcalc = 0;
-  byte maxidx = 8;
+  uint8_t checksum = 0;
+  uint8_t checksumcalc = 0;
+  uint8_t maxidx = 8;
   unsigned long atime;
   float factor;
   char buf1[16];
 
   if (rfsns_raw_signal->Number > RFSNS_ACH2010_MAX_PULSECOUNT) { maxidx = 9; }
   // Get message back to front as the header is almost never received complete for ACH2010
-  byte idx = maxidx;
-  for (byte x = rfsns_raw_signal->Number; x > 0; x = x-2) {
+  uint8_t idx = maxidx;
+  for (uint8_t x = rfsns_raw_signal->Number; x > 0; x = x-2) {
     if (rfsns_raw_signal->Pulses[x-1] * rfsns_raw_signal->Multiply < 0x300) {
       rfbit = 0x80;
     } else {
@@ -559,16 +559,16 @@ void RfSnsAlectoV2Show(bool json)
       }
     } else {
       float temp = ConvertTemp(rfsns_alecto_v2->temp);
-      char temperature[10];
+      char temperature[33];
       dtostrfd(temp, Settings.flag2.temperature_resolution, temperature);
       float humi = (float)rfsns_alecto_v2->humi;
-      char humidity[10];
+      char humidity[33];
       dtostrfd(humi, Settings.flag2.humidity_resolution, humidity);
-      char rain[10];
+      char rain[33];
       dtostrfd(rfsns_alecto_v2->rain, 2, rain);
-      char wind[10];
+      char wind[33];
       dtostrfd(rfsns_alecto_v2->wind, 2, wind);
-      char gust[10];
+      char gust[33];
       dtostrfd(rfsns_alecto_v2->gust, 2, gust);
       char wdir[4];
       char direction[20];
@@ -607,6 +607,7 @@ void RfSnsInit(void)
 {
   rfsns_raw_signal = (raw_signal_t*)(malloc(sizeof(raw_signal_t)));
   if (rfsns_raw_signal) {
+    memset(rfsns_raw_signal, 0, sizeof(raw_signal_t));  // Init defaults to 0
 #ifdef USE_THEO_V2
     RfSnsInitTheoV2();
 #endif
@@ -658,7 +659,7 @@ void RfSnsShow(bool json)
  * Interface
 \*********************************************************************************************/
 
-boolean Xsns37(byte function)
+bool Xsns37(uint8_t function)
 {
   bool result = false;
 

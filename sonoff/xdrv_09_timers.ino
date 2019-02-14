@@ -1,7 +1,7 @@
 /*
   xdrv_09_timers.ino - timer support for Sonoff-Tasmota
 
-  Copyright (C) 2018  Theo Arends
+  Copyright (C) 2019  Theo Arends
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -135,7 +135,6 @@ void DuskTillDawn(uint8_t *hour_up,uint8_t *minute_up, uint8_t *hour_down, uint8
 //  double Zeitzone = 2.0;   //Sommerzeit
   double Zeitzone = ((double)time_timezone) / 60;
   double Zeitgleichung = BerechneZeitgleichung(&DK, T);
-  double Minuten = Zeitgleichung * 60.0;
   double Zeitdifferenz = 12.0*acos((sin(h) - sin(B)*sin(DK)) / (cos(B)*cos(DK)))/pi;
   double AufgangOrtszeit = 12.0 - Zeitdifferenz - Zeitgleichung;
   double UntergangOrtszeit = 12.0 + Zeitdifferenz - Zeitgleichung;
@@ -220,7 +219,7 @@ void ApplyTimerOffsets(Timer *duskdawn)
   duskdawn->time = timeBuffer;
 }
 
-String GetSun(byte dawn)
+String GetSun(uint8_t dawn)
 {
   char stime[6];
 
@@ -233,7 +232,7 @@ String GetSun(byte dawn)
   return String(stime);
 }
 
-uint16_t GetSunMinutes(byte dawn)
+uint16_t GetSunMinutes(uint8_t dawn)
 {
   uint8_t hour[2];
   uint8_t minute[2];
@@ -247,7 +246,7 @@ uint16_t GetSunMinutes(byte dawn)
 
 /*******************************************************************************************/
 
-void TimerSetRandomWindow(byte index)
+void TimerSetRandomWindow(uint8_t index)
 {
   timer_window[index] = 0;
   if (Settings.timer[index].window) {
@@ -257,7 +256,7 @@ void TimerSetRandomWindow(byte index)
 
 void TimerSetRandomWindows(void)
 {
-  for (byte i = 0; i < MAX_TIMERS; i++) { TimerSetRandomWindow(i); }
+  for (uint8_t i = 0; i < MAX_TIMERS; i++) { TimerSetRandomWindow(i); }
 }
 
 void TimerEverySecond(void)
@@ -269,7 +268,7 @@ void TimerEverySecond(void)
       int16_t time = (RtcTime.hour *60) + RtcTime.minute;
       uint8_t days = 1 << (RtcTime.day_of_week -1);
 
-      for (byte i = 0; i < MAX_TIMERS; i++) {
+      for (uint8_t i = 0; i < MAX_TIMERS; i++) {
 //        if (Settings.timer[i].device >= devices_present) Settings.timer[i].data = 0;  // Reset timer due to change in devices present
         Timer xtimer = Settings.timer[i];
         uint16_t set_time = xtimer.time;
@@ -309,7 +308,7 @@ void PrepShowTimer(uint8_t index)
 
   Timer xtimer = Settings.timer[index -1];
 
-  for (byte i = 0; i < 7; i++) {
+  for (uint8_t i = 0; i < 7; i++) {
     uint8_t mask = 1 << i;
     snprintf(days, sizeof(days), "%s%d", days, ((xtimer.days & mask) > 0));
   }
@@ -338,11 +337,11 @@ void PrepShowTimer(uint8_t index)
  * Commands
 \*********************************************************************************************/
 
-boolean TimerCommand(void)
+bool TimerCommand(void)
 {
   char command[CMDSZ];
   char dataBufUc[XdrvMailbox.data_len];
-  boolean serviced = true;
+  bool serviced = true;
   uint8_t index = XdrvMailbox.index;
 
   UpperCase(dataBufUc, XdrvMailbox.data);
@@ -465,9 +464,9 @@ boolean TimerCommand(void)
     snprintf_P(mqtt_data, sizeof(mqtt_data), S_JSON_COMMAND_SVALUE, command, GetStateText(Settings.flag3.timers_enable));
     MqttPublishPrefixTopic_P(RESULT_OR_STAT, command);
 
-    byte jsflg = 0;
-    byte lines = 1;
-    for (byte i = 0; i < MAX_TIMERS; i++) {
+    uint8_t jsflg = 0;
+    uint8_t lines = 1;
+    for (uint8_t i = 0; i < MAX_TIMERS; i++) {
       if (!jsflg) {
         snprintf_P(mqtt_data, sizeof(mqtt_data), PSTR("{\"" D_CMND_TIMERS "%d\":{"), lines++);
       } else {
@@ -488,7 +487,7 @@ boolean TimerCommand(void)
     if (XdrvMailbox.data_len) {
       Settings.longitude = (int)(CharToDouble(XdrvMailbox.data) *1000000);
     }
-    char lbuff[32];
+    char lbuff[33];
     dtostrfd(((double)Settings.longitude) /1000000, 6, lbuff);
     snprintf_P(mqtt_data, sizeof(mqtt_data), S_JSON_COMMAND_SVALUE, command, lbuff);
   }
@@ -496,7 +495,7 @@ boolean TimerCommand(void)
     if (XdrvMailbox.data_len) {
       Settings.latitude = (int)(CharToDouble(XdrvMailbox.data) *1000000);
     }
-    char lbuff[32];
+    char lbuff[33];
     dtostrfd(((double)Settings.latitude) /1000000, 6, lbuff);
     snprintf_P(mqtt_data, sizeof(mqtt_data), S_JSON_COMMAND_SVALUE, command, lbuff);
   }
@@ -518,7 +517,7 @@ boolean TimerCommand(void)
 const char S_CONFIGURE_TIMER[] PROGMEM = D_CONFIGURE_TIMER;
 
 const char HTTP_BTN_MENU_TIMER[] PROGMEM =
-  "<br/><form action='" WEB_HANDLE_TIMER "' method='get'><button>" D_CONFIGURE_TIMER "</button></form>";
+  "<p><form action='" WEB_HANDLE_TIMER "' method='get'><button>" D_CONFIGURE_TIMER "</button></form></p>";
 
 const char HTTP_TIMER_SCRIPT[] PROGMEM =
   "var pt=[],ct=99;"
@@ -594,8 +593,8 @@ const char HTTP_TIMER_SCRIPT[] PROGMEM =
     "if(ct<99){st();}"                                            // Save changes
     "ct=t;"
     "o=document.getElementsByClassName('tl');"                    // Restore style to all tabs/buttons
-    "for(i=0;i<o.length;i++){o[i].style.cssText=\"background-color:#ccc;color:#fff;font-weight:normal;\"}"
-    "e.style.cssText=\"background-color:#fff;color:#000;font-weight:bold;\";"  // Change style to tab/button used to open content
+    "for(i=0;i<o.length;i++){o[i].style.cssText=\"background-color:#999;color:#fff;font-weight:normal;\"}"
+    "e.style.cssText=\"background-color:transparent;color:#000;font-weight:bold;\";"  // Change style to tab/button used to open content
     "s=pt[ct];"                                                   // Get parameters from array
 #ifdef USE_SUNRISE
     "p=(s>>29)&3;eb('b'+p).checked=1;"                            // Set mode
@@ -638,36 +637,34 @@ const char HTTP_TIMER_SCRIPT[] PROGMEM =
     "o=qs('#mw');for(i=0;i<=15;i++){ce((i<10)?('0'+i):i,o);}"     // Create window minutes select options
     "o=qs('#d1');for(i=0;i<}1;i++){ce(i+1,o);}"                   // Create outputs
     "var a='" D_DAY3LIST "';"
-    "s='';for(i=0;i<7;i++){s+=\"<input style='width:5%;' id='w\"+i+\"' name='w\"+i+\"' type='checkbox'><b>\"+a.substring(i*3,(i*3)+3)+\"</b>\"}"
+    "s='';for(i=0;i<7;i++){s+=\"<input id='w\"+i+\"' name='w\"+i+\"' type='checkbox'><b>\"+a.substring(i*3,(i*3)+3)+\"</b> \"}"
     "eb('ds').innerHTML=s;"                                       // Create weekdays
     "eb('dP').click();"                                           // Get the element with id='dP' and click on it
   "}";
 const char HTTP_TIMER_STYLE[] PROGMEM =
-  ".tl{float:left;border-radius:0;border:1px solid #fff;padding:1px;width:6.25%;}"
-#ifdef USE_SUNRISE
-  "input[type='radio']{width:13px;height:24px;margin-top:-1px;margin-right:8px;vertical-align:middle;}"
-#endif
+  ".tl{float:left;border-radius:0;border:1px solid #f2f2f2;padding:1px;width:6.25%;}"  // Border color needs to be the same as Fieldset background color from HTTP_HEAD_STYLE (transparent won't work)
   "</style>";
 const char HTTP_FORM_TIMER[] PROGMEM =
   "<fieldset style='min-width:470px;text-align:center;'>"
   "<legend style='text-align:left;'><b>&nbsp;" D_TIMER_PARAMETERS "&nbsp;</b></legend>"
   "<form method='post' action='" WEB_HANDLE_TIMER "' onsubmit='return st();'>"
-  "<br/><input style='width:5%;' id='e0' name='e0' type='checkbox'{e0><b>" D_TIMER_ENABLE "</b><br/><br/><hr/>"
+  "<br/><input id='e0' name='e0' type='checkbox'{e0><b>" D_TIMER_ENABLE "</b><br/><br/><hr/>"
   "<input id='t0' name='t0' value='";
 const char HTTP_FORM_TIMER1[] PROGMEM =
   "' hidden><div id='bt' name='bt'></div><br/><br/><br/>"
   "<div id='oa' name='oa'></div><br/>"
   "<div>"
-  "<input style='width:5%;' id='a0' name='a0' type='checkbox'><b>" D_TIMER_ARM "</b>&emsp;"
-  "<input style='width:5%;' id='r0' name='r0' type='checkbox'><b>" D_TIMER_REPEAT "</b>"
+  "<input id='a0' name='a0' type='checkbox'><b>" D_TIMER_ARM "</b>&emsp;"
+  "<input id='r0' name='r0' type='checkbox'><b>" D_TIMER_REPEAT "</b>"
   "</div><br/>"
   "<div>"
 #ifdef USE_SUNRISE
-  "<fieldset style='width:299px;margin:auto;text-align:left;border:0;'>"
+  "<fieldset style='width:299px;margin:auto;text-align:left;border:0;'>"  // 299 used in page.replace(F("299")
   "<input id='b0' name='rd' type='radio' value='0' onclick='gt();'><b>" D_TIMER_TIME "</b><br/>"
   "<input id='b1' name='rd' type='radio' value='1' onclick='gt();'><b>" D_SUNRISE "</b> (}8)<br/>"
   "<input id='b2' name='rd' type='radio' value='2' onclick='gt();'><b>" D_SUNSET "</b> (}9)<br/>"
   "</fieldset>"
+  "<p></p>"
   "<span><select style='width:46px;' id='dr' name='dr'></select></span>"
   "&nbsp;"
 #else
@@ -683,8 +680,8 @@ const char HTTP_FORM_TIMER1[] PROGMEM =
 
 void HandleTimerConfiguration(void)
 {
-  if (HttpUser()) { return; }
-  if (!WebAuthenticate()) { return WebServer->requestAuthentication(); }
+  if (!HttpCheckPriviledgedAccess()) { return; }
+
   AddLog_P(LOG_LEVEL_DEBUG, S_LOG_HTTP, S_CONFIGURE_TIMER);
 
   if (WebServer->hasArg("save")) {
@@ -700,7 +697,7 @@ void HandleTimerConfiguration(void)
   page.replace(F("</style>"), FPSTR(HTTP_TIMER_STYLE));
   page += FPSTR(HTTP_FORM_TIMER);
   page.replace(F("{e0"), (Settings.flag3.timers_enable) ? F(" checked") : F(""));
-  for (byte i = 0; i < MAX_TIMERS; i++) {
+  for (uint8_t i = 0; i < MAX_TIMERS; i++) {
     if (i > 0) { page += F(","); }
     page += String(Settings.timer[i].data);
   }
@@ -726,7 +723,7 @@ void TimerSaveSettings(void)
   WebGetArg("t0", tmp, sizeof(tmp));
   char *p = tmp;
   snprintf_P(log_data, sizeof(log_data), PSTR(D_LOG_MQTT D_CMND_TIMERS " %d"), Settings.flag3.timers_enable);
-  for (byte i = 0; i < MAX_TIMERS; i++) {
+  for (uint8_t i = 0; i < MAX_TIMERS; i++) {
     timer.data = strtol(p, &p, 10);
     p++;  // Skip comma
     if (timer.time < 1440) {
@@ -745,9 +742,9 @@ void TimerSaveSettings(void)
  * Interface
 \*********************************************************************************************/
 
-boolean Xdrv09(byte function)
+bool Xdrv09(uint8_t function)
 {
-  boolean result = false;
+  bool result = false;
 
   switch (function) {
     case FUNC_PRE_INIT:

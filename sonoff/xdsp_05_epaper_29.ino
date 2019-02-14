@@ -1,7 +1,7 @@
 /*
   xdsp_05_epaper_29.ino - 2.9 Inch display e-paper support for Sonoff-Tasmota
 
-  Copyright (C) 2018  Theo Arends, Gerhard Mutz and Waveshare
+  Copyright (C) 2019  Theo Arends, Gerhard Mutz and Waveshare
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
 
 #ifdef USE_SPI
 #ifdef USE_DISPLAY
-#ifdef USE_DISPLAY_EPAPER
+#ifdef USE_DISPLAY_EPAPER_29
 
 #define XDSP_05                5
 
@@ -123,12 +123,16 @@ void EpdInitDriver(void)
       epd.sclk_pin = pin[GPIO_SPI_CLK];   // 14
       epd.mosi_pin = pin[GPIO_SPI_MOSI];  // 13
       EpdInitMode();
+      snprintf_P(log_data, sizeof(log_data), PSTR("EPD: HardSPI CS %d, CLK %d, MOSI %d"), epd.cs_pin, epd.sclk_pin, epd.mosi_pin);
+      AddLog(LOG_LEVEL_DEBUG);
     }
     else if ((pin[GPIO_SSPI_CS] < 99) && (pin[GPIO_SSPI_SCLK] < 99) && (pin[GPIO_SSPI_MOSI] < 99)) {
       epd.cs_pin = pin[GPIO_SSPI_CS];
       epd.sclk_pin = pin[GPIO_SSPI_SCLK];
       epd.mosi_pin = pin[GPIO_SSPI_MOSI];
       EpdInitMode();
+      snprintf_P(log_data, sizeof(log_data), PSTR("EPD: SoftSPI CS %d, CLK %d, MOSI %d"), epd.cs_pin, epd.sclk_pin, epd.mosi_pin);
+      AddLog(LOG_LEVEL_DEBUG);
     }
   }
 }
@@ -161,6 +165,7 @@ void EpdDisplayFrame(void)
 {
   epd.SetFrameMemory(paint.GetImage(), 0, 0, paint.GetWidth(), paint.GetHeight());
   epd.DisplayFrame();
+  epd.Sleep();
 }
 
 void EpdDrawStringAt(uint16_t x, uint16_t y, char *str, uint8_t color, uint8_t flag)
@@ -198,7 +203,7 @@ void EpdPrintLog(void)
 
     char* txt = DisplayLogBuffer('\040');
     if (txt != NULL) {
-      byte size = Settings.display_size;
+      uint8_t size = Settings.display_size;
       uint16_t theight = size * EPD_FONT_HEIGTH;
 
       EpdSetFont(size);
@@ -206,7 +211,7 @@ void EpdPrintLog(void)
 
 //      epd_scroll = theight;  // Start below header
       epd_scroll = 0;  // Start at top with no header
-      for (byte i = 0; i < last_row; i++) {
+      for (uint8_t i = 0; i < last_row; i++) {
         strlcpy(disp_screen_buffer[i], disp_screen_buffer[i +1], disp_screen_buffer_cols);
         EpdDrawStringAt(0, epd_scroll, disp_screen_buffer[i], COLORED, 0);
         epd_scroll += theight;
@@ -262,9 +267,9 @@ void EpdRefresh(void)  // Every second
  * Interface
 \*********************************************************************************************/
 
-boolean Xdsp05(byte function)
+bool Xdsp05(uint8_t function)
 {
-  boolean result = false;
+  bool result = false;
 
   if (spi_flg || soft_spi_flg) {
     if (FUNC_DISPLAY_INIT_DRIVER == function) {
@@ -337,6 +342,6 @@ boolean Xdsp05(byte function)
   return result;
 }
 
-#endif  // USE_DISPLAY_EPAPER
+#endif  // USE_DISPLAY_EPAPER_29
 #endif  // USE_DISPLAY
 #endif  // USE_SPI

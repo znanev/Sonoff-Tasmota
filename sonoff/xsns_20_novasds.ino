@@ -1,7 +1,7 @@
 /*
   xsns_20_novasds.ino - Nova SDS011/SDS021 particle concentration sensor support for Sonoff-Tasmota
 
-  Copyright (C) 2018  Theo Arends
+  Copyright (C) 2019  Theo Arends
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
 /*********************************************************************************************\
  * Nova Fitness SDS011 (and possibly SDS021) particle concentration sensor
  * For background information see http://aqicn.org/sensor/sds011/
- * For protocol specification see 
+ * For protocol specification see
  *   https://cdn.sparkfun.com/assets/parts/1/2/2/7/5/Laser_Dust_Sensor_Control_Protocol_V1.3.pdf
  *
  * Hardware Serial will be selected if GPIO3 = [SDS0X01]
@@ -74,12 +74,12 @@ struct sds011data {
   #define NOVA_SDS_SLEEP                1       // Subcmnd "sleep mode"
 
 
-bool NovaSdsCommand(uint8_t byte1, uint8_t byte2, uint8_t byte3, uint16_t sensorid, byte *buffer)
+bool NovaSdsCommand(uint8_t byte1, uint8_t byte2, uint8_t byte3, uint16_t sensorid, uint8_t *buffer)
 {
   uint8_t novasds_cmnd[19] = {0xAA, 0xB4, byte1, byte2, byte3, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, (uint8_t)(sensorid & 0xFF), (uint8_t)((sensorid>>8) & 0xFF), 0x00, 0xAB};
 
   // calc crc
-  for (byte i = 2; i < 17; i++) {
+  for (uint8_t i = 2; i < 17; i++) {
     novasds_cmnd[17] += novasds_cmnd[i];
   }
   //~ snprintf_P(log_data, sizeof(log_data), PSTR("SDS: Send %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X"),
@@ -97,7 +97,7 @@ bool NovaSdsCommand(uint8_t byte1, uint8_t byte2, uint8_t byte3, uint16_t sensor
     // timeout
     return false;
   }
-  byte recbuf[10];
+  uint8_t recbuf[10];
   memset(recbuf, 0, sizeof(recbuf));
   // sync to 0xAA header
   while ( (TimePassedSince(cmndtime) < NOVA_SDS_RECDATA_TIMEOUT) && ( NovaSdsSerial->available() > 0) && (0xAA != (recbuf[0] = NovaSdsSerial->read())) );
@@ -108,7 +108,7 @@ bool NovaSdsCommand(uint8_t byte1, uint8_t byte2, uint8_t byte3, uint16_t sensor
 
   // read rest (9 of 10 bytes) of message
   NovaSdsSerial->readBytes(&recbuf[1], 9);
-  AddLogSerial(LOG_LEVEL_DEBUG_MORE, recbuf, sizeof(recbuf));
+  AddLogBuffer(LOG_LEVEL_DEBUG_MORE, recbuf, sizeof(recbuf));
 
   if ( NULL != buffer ) {
     // return data to buffer
@@ -134,7 +134,7 @@ void NovaSdsSetWorkPeriod(void)
 
 bool NovaSdsReadData(void)
 {
-  byte d[10];
+  uint8_t d[10];
   if ( ! NovaSdsCommand(NOVA_SDS_QUERY_DATA, 0, 0, NOVA_SDS_DEVICE_ID, d) ) {
     return false;
   }
@@ -186,14 +186,14 @@ const char HTTP_SDS0X1_SNS[] PROGMEM = "%s"
   "{s}SDS0X1 " D_ENVIRONMENTAL_CONCENTRATION " 10 " D_UNIT_MICROMETER "{m}%s " D_UNIT_MICROGRAM_PER_CUBIC_METER "{e}";      // {s} = <tr><th>, {m} = </th><td>, {e} = </td></tr>
 #endif  // USE_WEBSERVER
 
-void NovaSdsShow(boolean json)
+void NovaSdsShow(bool json)
 {
   if (novasds_valid) {
-    char pm10[10];
-    char pm2_5[10];
     float pm10f = (float)(novasds_data.pm100) / 10.0f;
     float pm2_5f = (float)(novasds_data.pm25) / 10.0f;
+    char pm10[33];
     dtostrfd(pm10f, 1, pm10);
+    char pm2_5[33];
     dtostrfd(pm2_5f, 1, pm2_5);
     if (json) {
       snprintf_P(mqtt_data, sizeof(mqtt_data), PSTR("%s,\"SDS0X1\":{\"PM2.5\":%s,\"PM10\":%s}"), mqtt_data, pm2_5, pm10);
@@ -215,9 +215,9 @@ void NovaSdsShow(boolean json)
  * Interface
 \*********************************************************************************************/
 
-boolean Xsns20(byte function)
+bool Xsns20(uint8_t function)
 {
-  boolean result = false;
+  bool result = false;
 
   if (novasds_type) {
     switch (function) {

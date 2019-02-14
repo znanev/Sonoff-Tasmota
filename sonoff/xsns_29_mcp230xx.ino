@@ -1,7 +1,7 @@
 /*
   xsns_29_mcp230xx.ino - Support for I2C MCP23008/MCP23017 GPIO Expander
 
-  Copyright (C) 2018  Andre Thomas and Theo Arends
+  Copyright (C) 2019  Andre Thomas and Theo Arends
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -325,7 +325,7 @@ void MCP230xx_CheckForInterrupt(void) {
   }
 }
 
-void MCP230xx_Show(boolean json)
+void MCP230xx_Show(bool json)
 {
   if (mcp230xx_type) {
     if (json) {
@@ -426,8 +426,8 @@ void MCP230xx_Reset(uint8_t pinmode) {
 }
 
 bool MCP230xx_Command(void) {
-  boolean serviced = true;
-  boolean validpin = false;
+  bool serviced = true;
+  bool validpin = false;
   uint8_t paramcount = 0;
   if (XdrvMailbox.data_len > 0) {
     paramcount=1;
@@ -781,9 +781,9 @@ void MCP230xx_Interrupt_Retain_Report(void) {
    Interface
 \*********************************************************************************************/
 
-boolean Xsns29(byte function)
+bool Xsns29(uint8_t function)
 {
-  boolean result = false;
+  bool result = false;
 
   if (i2c_flg) {
     switch (function) {
