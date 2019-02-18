@@ -776,9 +776,6 @@ void MqttDataHandler(char* topic, uint8_t* data, unsigned int data_len)
             if (10 == pindex) {  // SetOption60 enable or disable traditional sleep
               WiFiSetSleepMode();  // Update WiFi sleep mode accordingly
             }
-            if ((12 == pindex) && (my_module_flag.pullup)) {  // SetOption62 change input pull-up
-              restart_flag = 2;    // Only restart if module supports it
-            }
           }
         }
         else {                   // SetOption32 .. 49
@@ -956,38 +953,6 @@ void MqttDataHandler(char* topic, uint8_t* data, unsigned int data_len)
       bool error = false;
 
       if (!strstr(dataBuf, "{")) {      // If no JSON it must be parameter
-/*
-        // Version 6.4.1.16 - Add user module config data to template
-        bool update = false;
-        if ((payload > 0) && (payload <= MAXMODULE)) {
-          ModuleDefault(payload -1);    // Copy template module
-          if (USER_MODULE == Settings.module) { restart_flag = 2; }
-        }
-        else if (0 == payload) {        // Copy current module with user configured GPIO
-          if (Settings.module < USER_MODULE) {
-            ModuleDefault(Settings.module);
-            update = true;
-          }
-        }
-        if (USER_MODULE == Settings.module) {  // Update with latest changes
-          update = true;
-        }
-        if (update) {
-          uint8_t src = 0;
-          for (uint8_t dst = 0; dst < sizeof(mycfgio); dst++) {
-            if (6 == dst) { src = 9; }
-            if (8 == dst) { src = 12; }
-            if (Settings.my_gp.io[src] > GPIO_NONE) {
-              if (Settings.user_template.gp.io[dst] != Settings.my_gp.io[src]) {
-                Settings.user_template.gp.io[dst] = Settings.my_gp.io[src];
-                if (USER_MODULE == Settings.module) { restart_flag = 2; }
-              }
-            }
-            src++;
-          }
-        }
-*/
-        // Version 6.4.1.17 use template as defined
         if ((payload > 0) && (payload <= MAXMODULE)) {
           ModuleDefault(payload -1);    // Copy template module
           if (USER_MODULE == Settings.module) { restart_flag = 2; }
@@ -2351,17 +2316,23 @@ void GpioInit(void)
     baudrate = APP_BAUDRATE;
   }
 
+  for (uint8_t i = 0; i < sizeof(Settings.user_template.gp); i++) {
+    if ((Settings.user_template.gp.io[i] >= GPIO_SENSOR_END) && (Settings.user_template.gp.io[i] < GPIO_USER)) {
+      Settings.user_template.gp.io[i] = GPIO_USER;  // Fix not supported sensor ids in template
+    }
+  }
+
   myio def_gp;
   ModuleGpios(&def_gp);
   for (uint8_t i = 0; i < sizeof(Settings.my_gp); i++) {
-    if (Settings.my_gp.io[i] > GPIO_NONE) {
+    if ((Settings.my_gp.io[i] >= GPIO_SENSOR_END) && (Settings.my_gp.io[i] < GPIO_USER)) {
+      Settings.my_gp.io[i] = GPIO_NONE;             // Fix not supported sensor ids in module
+    }
+    else if (Settings.my_gp.io[i] > GPIO_NONE) {
       my_module.io[i] = Settings.my_gp.io[i];
     }
     if ((def_gp.io[i] > GPIO_NONE) && (def_gp.io[i] < GPIO_USER)) {
       my_module.io[i] = def_gp.io[i];
-      if (USER_MODULE == Settings.module) {
-        Settings.my_gp.io[i] = def_gp.io[i];  // Copy user template settings
-      }
     }
   }
   my_module_flag = ModuleFlag();
