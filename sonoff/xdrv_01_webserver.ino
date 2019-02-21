@@ -52,13 +52,13 @@ const char HTTP_HEAD[] PROGMEM =
   "<title>{h} - {v}</title>"
 
   "<script>"
-  "var x=null,lt,to,tp,pc='';"   // x=null allow for abortion
+  "var x=null,lt,to,tp,pc='';"            // x=null allow for abortion
   "function eb(s){"
     "return document.getElementById(s);"  // Save code space
   "}";
 
 const char HTTP_SCRIPT_COUNTER[] PROGMEM =
-  "var cn=180;"                  // seconds
+  "var cn=180;"                           // seconds
   "function u(){"
     "if(cn>=0){"
       "eb('t').innerHTML='" D_RESTART_IN " '+cn+' " D_SECONDS "';"
@@ -76,7 +76,7 @@ const char HTTP_SCRIPT_ROOT[] PROGMEM =
       "a=p;"
       "clearTimeout(lt);"
     "}"
-    "if(x!=null){x.abort();}"    // Abort if no response within 2 seconds (happens on restart 1)
+    "if(x!=null){x.abort();}"             // Abort if no response within 2 seconds (happens on restart 1)
     "x=new XMLHttpRequest();"
     "x.onreadystatechange=function(){"
       "if(x.readyState==4&&x.status==200){"
@@ -86,13 +86,13 @@ const char HTTP_SCRIPT_ROOT[] PROGMEM =
     "};"
     "x.open('GET','ay'+a,true);"
     "x.send();"
-    "lt=setTimeout(la,{a});"    // Settings.web_refresh
+    "lt=setTimeout(la,{a});"              // Settings.web_refresh
   "}"
   "function lb(p){"
-    "la('?d='+p);"              // ?d related to WebGetArg("d", tmp, sizeof(tmp));
+    "la('?d='+p);"                        // ?d related to WebGetArg("d", tmp, sizeof(tmp));
   "}"
   "function lc(p){"
-    "la('?t='+p);"              // ?t related to WebGetArg("t", tmp, sizeof(tmp));
+    "la('?t='+p);"                        // ?t related to WebGetArg("t", tmp, sizeof(tmp));
   "}"
   "window.onload=la();";
 
@@ -112,9 +112,9 @@ const char HTTP_SCRIPT_RELOAD_OTA[] PROGMEM =
   "</script>";
 
 const char HTTP_SCRIPT_CONSOL[] PROGMEM =
-  "var sn=0;"                    // Scroll position
-  "var id=0;"                    // Get most of weblog initially
-  "function l(p){"               // Console log and command service
+  "var sn=0;"                             // Scroll position
+  "var id=0;"                             // Get most of weblog initially
+  "function l(p){"                        // Console log and command service
     "var c,o,t;"
     "clearTimeout(lt);"
     "o='';"
@@ -125,8 +125,8 @@ const char HTTP_SCRIPT_CONSOL[] PROGMEM =
       "c.value='';"
       "t.scrollTop=sn;"
     "}"
-    "if(t.scrollTop>=sn){"       // User scrolled back so no updates
-      "if(x!=null){x.abort();}"  // Abort if no response within 2 seconds (happens on restart 1)
+    "if(t.scrollTop>=sn){"                // User scrolled back so no updates
+      "if(x!=null){x.abort();}"           // Abort if no response within 2 seconds (happens on restart 1)
       "x=new XMLHttpRequest();"
       "x.onreadystatechange=function(){"
         "if(x.readyState==4&&x.status==200){"
@@ -151,88 +151,83 @@ const char HTTP_SCRIPT_CONSOL[] PROGMEM =
 
 const char HTTP_SCRIPT_MODULE_TEMPLATE[] PROGMEM =
   "var os;"
-  "function sk(s,g){"                       // s = value, g = id and name
+  "function sk(s,g){"                     // s = value, g = id and name
     "var o=os.replace(/}1/g,\"<option value=\").replace(/}2/g,\"</option>\");"
     "eb('g'+g).innerHTML=o;"
     "eb('g'+g).value=s;"
+  "}"
+  "function ld(u,f){"
+    "var x=new XMLHttpRequest();"
+    "x.onreadystatechange=function(){"
+      "if(this.readyState==4&&this.status==200){"
+        "f(this);"
+      "}"
+    "};"
+    "x.open('GET',u,true);"
+    "x.send();"
   "}";
 
 const char HTTP_SCRIPT_TEMPLATE[] PROGMEM =
+  "var c;"                                // Need a global for BASE
+  "function x1(b){"
+    "var i,j,g,k,m,o=b.responseText;"
+    "k=o.indexOf(\"}1\");"                // Template name until }1
+    "if(eb('s1').value==''){"
+      "eb('s1').value=o.substring(0,k);"  // Set NAME if not yet set
+    "}"
+    "m=o.indexOf(\"}3\");"                // Sensor names until }3
+    "os=o.substring(k,m);"                // Complete GPIO sensor list
+    "g=o.substring(m+2).split(',');"      // +2 is length "}3"
+    "j=0;"
+    "for(i=0;i<13;i++){"                  // Supports 13 GPIOs
+      "if(6==i){j=9;}"
+      "if(8==i){j=12;}"
+      "sk(g[i],j);"                       // Set GPIO
+      "j++;"
+    "}"
+    "for(i=0;i<" STR(GPIO_FLAG_USED) ";i++){"
+      "p=(g[13]>>i)&1;"
+      "eb('c'+i).checked=p;"              // Set FLAG checkboxes
+    "}"
+    "if(" STR(USER_MODULE) "==c){"
+      "eb('g99').value=g[14];"            // Set BASE for initial select
+    "}"
+  "}"
   "function st(t){"
-    "b=new XMLHttpRequest();"
-    "b.onreadystatechange=function(){"
-      "if(b.readyState==4&&b.status==200){"
-        "var i,j,g,k,m,o=b.responseText;"
-        "k=o.indexOf(\"}1\");"              // Template name until }1
-        "if(eb('s1').value==''){"
-          "eb('s1').value=o.substring(0,k);"  // Set NAME if not yet set
-        "}"
-        "m=o.indexOf(\"}3\");"              // Sensor names until }3
-        "os=o.substring(k,m);"              // Complete GPIO sensor list
-        "g=o.substring(m+2).split(',');"    // +2 is length "}3"
-        "j=0;"
-        "for(i=0;i<13;i++){"
-          "if(6==i){j=9;}"
-          "if(8==i){j=12;}"
-          "sk(g[i],j);"                     // Set GPIO
-          "j++;"
-        "}"
-        "for(i=0;i<1;i++){"
-          "p=(g[13]>>i)&1;"
-          "eb('c'+i).checked=p;"            // Set FLAG checkboxes
-        "}"
-        "if(255==t){"
-          "eb('g99').value=g[14];"          // Set BASE for initial select
-        "}"
-      "}"
-    "};"
-    "b.open('GET','tp?t='+t,true);"         // ?t related to WebGetArg("t", stemp, sizeof(stemp));
-    "b.send();"
+    "c=t;"                                // Needed for initial BASE select
+    "var a='tp?t='+t;"
+    "ld(a,x1);"                           // ?t related to WebGetArg("t", stemp, sizeof(stemp));
   "}"
-  "function sl(){"
-    "a=new XMLHttpRequest();"
-    "a.onreadystatechange=function(){"
-      "if(a.readyState==4&&a.status==200){"
-        "os=a.responseText;"
-        "sk(17,99);"
-        "st(255);"
-      "}"
-    "};"
-    "a.open('GET','tp?m=1',true);"          // ?m related to WebServer->hasArg("m")
-    "a.send();"
+
+  "function x2(a){"
+    "os=a.responseText;"
+    "sk(17,99);"                          // 17 = WEMOS
+    "st(" STR(USER_MODULE) ");"
   "}"
-  "window.onload=sl;";
+  "window.onload=ld('tp?m=1',x2);";       // ?m related to WebServer->hasArg("m")
 
 const char HTTP_SCRIPT_MODULE1[] PROGMEM =
-  "function sl(){"
-    "a=new XMLHttpRequest();"
-    "a.onreadystatechange=function(){"
-      "if(a.readyState==4&&a.status==200){"
-        "os=a.responseText;"
-        "sk(}4,99);"
-      "}"
-    "};"
-    "a.open('GET','md?m=1',true);"  // ?m related to WebServer->hasArg("m")
-    "a.send();"
-    "b=new XMLHttpRequest();"
-    "b.onreadystatechange=function(){"
-      "if(b.readyState==4&&b.status==200){"
-        "os=b.responseText;";
+  "function x1(a){"
+    "os=a.responseText;"
+    "sk(}4,99);"
+  "}"
+  "function x2(b){"
+    "os=b.responseText;";
 const char HTTP_SCRIPT_MODULE2[] PROGMEM =
-      "}"
-    "};"
-    "b.open('GET','md?g=1',true);"  // ?g related to WebServer->hasArg("g")
-    "b.send();"
+  "}"
+  "function sl(){"
+    "ld('md?m=1',x1);"                     // ?m related to WebServer->hasArg("m")
+    "ld('md?g=1',x2);"                     // ?m related to WebServer->hasArg("m")
   "}"
   "window.onload=sl;";
 const char HTTP_SCRIPT_MODULE3[] PROGMEM =
-  "}1'%d'>%s (%d)}2";            // "}1" and "}2" means do not use "}x" in Module name and Sensor name
+  "}1'%d'>%s (%d)}2";                      // "}1" and "}2" means do not use "}x" in Module name and Sensor name
 
 const char HTTP_SCRIPT_INFO_BEGIN[] PROGMEM =
   "function i(){"
     "var s,o=\"";
 const char HTTP_SCRIPT_INFO_END[] PROGMEM =
-    "\";"                        // "}1" and "}2" means do not use "}x" in Information text
+    "\";"                                   // "}1" and "}2" means do not use "}x" in Information text
     "s=o.replace(/}1/g,\"</td></tr><tr><th>\").replace(/}2/g,\"</th><td>\");"
     "eb('i').innerHTML=s;"
   "}"
@@ -373,7 +368,7 @@ const char HTTP_FORM_OTHER[] PROGMEM =
   "<p></p>"
   "<fieldset><legend><b>&nbsp;" D_TEMPLATE "&nbsp;</b></legend>"
   "<p><input id='t1' name='t1' placeholder='" D_TEMPLATE "' value='{t1'></p>"
-  "<p><input id='t2' name='t2' type='checkbox'><b>" D_ACTIVATE "</b></p>"
+  "<p><input id='t2' name='t2' type='checkbox'{t2><b>" D_ACTIVATE "</b></p>"
   "</fieldset>"
   "<br/>"
   "<b>" D_WEB_ADMIN_PASSWORD "</b><br/><input id='p1' name='p1' type='password' placeholder='" D_WEB_ADMIN_PASSWORD "' value='" D_ASTERIX "'><br/>"
@@ -891,9 +886,7 @@ void HandleTemplateConfiguration(void)
 
   if (WebServer->hasArg("save")) {
     TemplateSaveSettings();
-    if (USER_MODULE == Settings.module) {
-      WebRestart(1);
-    }
+    WebRestart(1);
     return;
   }
 
@@ -922,7 +915,6 @@ void HandleTemplateConfiguration(void)
 
     String page = AnyModuleName(module);                    // NAME: Generic
 
-//    page += F("}1'255'>" D_SENSOR_USER " (255)}2");         // GPIO: }1'255'>User (255)}2
     for (uint8_t i = 0; i < sizeof(kGpioNiceList); i++) {   // GPIO: }1'0'>None (0)}2}1'17'>Button1 (17)}2...
 
       if (1 == i) {
@@ -937,7 +929,7 @@ void HandleTemplateConfiguration(void)
 
     mqtt_data[0] = '\0';
     for (uint8_t i = 0; i < sizeof(cmodule); i++) {         // 17,148,29,149,7,255,255,255,138,255,139,255,255
-      if ((i < 6) || ((i > 8) && (i < 11)) || (i > 11)) {   // Ignore flash pins GPIO06, 7, 8 and 11
+      if ((i < 6) || ((i > 8) && (i != 11))) {              // Ignore flash pins GPIO06, 7, 8 and 11
         snprintf_P(mqtt_data, sizeof(mqtt_data), PSTR("%s%s%d"), mqtt_data, (i>0)?",":"", cmodule.io[i]);
       }
     }
@@ -958,9 +950,9 @@ void HandleTemplateConfiguration(void)
   page += FPSTR(HTTP_FORM_TEMPLATE);
   page += F("<br/><table>");
   for (uint8_t i = 0; i < 17; i++) {
-    if ((i < 6) || ((i > 8) && (i < 11)) || (i > 11)) {  // Ignore flash pins GPIO06, 7, 8 and 11
+    if ((i < 6) || ((i > 8) && (i != 11))) {                // Ignore flash pins GPIO06, 7, 8 and 11
       snprintf_P(mqtt_data, sizeof(mqtt_data), PSTR("<tr><td%s><b>" D_GPIO "%d</b></td><td>%s</td><td%s><select id='g%d' name='g%d'></select></td></tr>"),
-        (0==i)?" style='width:80px'":"", i, ((9==i)||(10==i))? "<font color='red'>ESP8285</font>" :"", (0==i)?" style='width:176px'":"", i, i);
+        (0==i)?" style='width:74px'":"", i, ((9==i)||(10==i))? "<font color='red'>ESP8285</font>" :"", (0==i)?" style='width:176px'":"", i, i);
       page += mqtt_data;
     }
   }
@@ -992,7 +984,7 @@ void TemplateSaveSettings(void)
   }
 
   uint8_t flag = 0;
-  for (uint8_t i = 0; i < 2; i++) {
+  for (uint8_t i = 0; i < GPIO_FLAG_USED; i++) {
     snprintf_P(stemp, sizeof(stemp), PSTR("c%d"), i);
     uint8_t state = WebServer->hasArg(stemp) << i;   // FLAG
     flag += state;
@@ -1357,6 +1349,7 @@ void HandleOtherConfiguration(void)
   page += FPSTR(HTTP_FORM_OTHER);
   TemplateJson();
   page.replace(F("{t1"), mqtt_data);
+  page.replace(F("{t2"), (USER_MODULE == Settings.module) ? F(" checked disabled") : F(""));
   page.replace(F("{r1"), (Settings.flag.mqtt_enabled) ? F(" checked") : F(""));
 
   uint8_t maxfn = (devices_present > MAX_FRIENDLYNAMES) ? MAX_FRIENDLYNAMES : (!devices_present) ? 1 : devices_present;
@@ -1975,6 +1968,7 @@ void HandleHttpCommand(void)
             if (JSON) { // Is it a JSON message (and not only [15:26:08 MQT: stat/wemos5/POWER = O])
               if (message.length() > 1) { message += F(","); }
               size_t JSONlen = len - (JSON - tmp);
+              if (JSONlen > sizeof(mqtt_data)) { JSONlen = sizeof(mqtt_data); }
               strlcpy(mqtt_data, JSON +1, JSONlen -2);
               message += mqtt_data;
             }
@@ -2054,6 +2048,7 @@ void HandleAjaxConsoleRefresh(void)
         } else {
           cflg = true;
         }
+        if (len > sizeof(mqtt_data) -2) { len = sizeof(mqtt_data); }
         strlcpy(mqtt_data, tmp, len);
         message += mqtt_data; // mqtt_data used as scratch space
       }
@@ -2153,23 +2148,22 @@ String UrlEncode(const String& text)
 
 int WebSend(char *buffer)
 {
-  /* [sonoff] POWER1 ON                                               --> Sends http://sonoff/cm?cmnd=POWER1 ON
-   * [192.168.178.86:80,admin:joker] POWER1 ON                        --> Sends http://hostname:80/cm?user=admin&password=joker&cmnd=POWER1 ON
-   * [sonoff] /any/link/starting/with/a/slash.php?log=123             --> Sends http://sonoff/any/link/starting/with/a/slash.php?log=123
-   * [sonoff,admin:joker] /any/link/starting/with/a/slash.php?log=123 --> Sends http://sonoff/any/link/starting/with/a/slash.php?log=123
-   */
+  // [sonoff] POWER1 ON                                               --> Sends http://sonoff/cm?cmnd=POWER1 ON
+  // [192.168.178.86:80,admin:joker] POWER1 ON                        --> Sends http://hostname:80/cm?user=admin&password=joker&cmnd=POWER1 ON
+  // [sonoff] /any/link/starting/with/a/slash.php?log=123             --> Sends http://sonoff/any/link/starting/with/a/slash.php?log=123
+  // [sonoff,admin:joker] /any/link/starting/with/a/slash.php?log=123 --> Sends http://sonoff/any/link/starting/with/a/slash.php?log=123
 
   char *host;
   char *port;
   char *user;
   char *password;
   char *command;
-  uint16_t nport = 80;
   int status = 1;                             // Wrong parameters
 
                                               // buffer = |  [  192.168.178.86  :  80  ,  admin  :  joker  ]    POWER1 ON   |
   host = strtok_r(buffer, "]", &command);     // host = |  [  192.168.178.86  :  80  ,  admin  :  joker  |, command = |    POWER1 ON   |
   if (host && command) {
+    String url = F("http:");                  // url = |http:|
     host = Trim(host);                        // host = |[  192.168.178.86  :  80  ,  admin  :  joker|
     host++;                                   // host = |  192.168.178.86  :  80  ,  admin  :  joker| - Skip [
     host = strtok_r(host, ",", &user);        // host = |  192.168.178.86  :  80  |, user = |  admin  :  joker|
@@ -2177,66 +2171,67 @@ int WebSend(char *buffer)
     host = Trim(host);                        // host = |192.168.178.86|
     if (port) {
       port = Trim(port);                      // port = |80|
-      nport = atoi(port);
+      url += port;                            // url = |http:80|
     }
+    url += F("//");                           // url = |http://| or |http:80//|
+    url += host;                              // url = |http://192.168.178.86|
+
     if (user) {
       user = strtok_r(user, ":", &password);  // user = |  admin  |, password = |  joker|
       user = Trim(user);                      // user = |admin|
       if (password) { password = Trim(password); }  // password = |joker|
     }
+
     command = Trim(command);                  // command = |POWER1 ON| or |/any/link/starting/with/a/slash.php?log=123|
-
-    String nuri = "";
     if (command[0] != '/') {
-      nuri = "/cm?";
+      url += F("/cm?");                       // url = |http://192.168.178.86/cm?|
       if (user && password) {
-        nuri += F("user=");
-        nuri += user;
-        nuri += F("&password=");
-        nuri += password;
-        nuri += F("&");
+        url += F("user=");                    // url = |http://192.168.178.86/cm?user=|
+        url += user;                          // url = |http://192.168.178.86/cm?user=admin|
+        url += F("&password=");               // url = |http://192.168.178.86/cm?user=admin&password=|
+        url += password;                      // url = |http://192.168.178.86/cm?user=admin&password=joker|
+        url += F("&");                        // url = |http://192.168.178.86/cm?user=admin&password=joker&|
       }
-      nuri += F("cmnd=");
+      url += F("cmnd=");                      // url = |http://192.168.178.86/cm?cmnd=| or |http://192.168.178.86/cm?user=admin&password=joker&cmnd=|
     }
-    nuri += command;
-    String uri = UrlEncode(nuri);
+    url += command;                           // url = |http://192.168.178.86/cm?cmnd=POWER1 ON|
 
-    IPAddress host_ip;
-    if (WiFi.hostByName(host, host_ip)) {
-      WiFiClient client;
-
-      bool connected = false;
-      uint8_t retry = 2;
-      while ((retry > 0) && !connected) {
-        --retry;
-        connected = client.connect(host_ip, nport);
-        if (connected) break;
-      }
-
-      if (connected) {
-        String url = F("GET ");
-        url += uri;
-        url += F(" HTTP/1.1\r\nHost: ");
-//        url += IPAddress(host_ip).toString();
-        url += host;   // https://tools.ietf.org/html/rfc7230#section-5.4 (#4331)
-        if (port) {
-          url += F(":");
-          url += port;
-        }
-        url += F("\r\nConnection: close\r\n\r\n");
-
-//snprintf_P(log_data, sizeof(log_data), PSTR("DBG: Url |%s|"), url.c_str());
+//snprintf_P(log_data, sizeof(log_data), PSTR("DBG: Uri |%s|"), url.c_str());
 //AddLog(LOG_LEVEL_DEBUG);
 
-        client.print(url.c_str());
-        client.flush();
-        client.stop();
+#if defined(ARDUINO_ESP8266_RELEASE_2_3_0) || defined(ARDUINO_ESP8266_RELEASE_2_4_0) || defined(ARDUINO_ESP8266_RELEASE_2_4_1) || defined(ARDUINO_ESP8266_RELEASE_2_4_2)
+    HTTPClient http;
+    if (http.begin(UrlEncode(url))) {         // UrlEncode(url) = |http://192.168.178.86/cm?cmnd=POWER1%20ON|
+#else
+    WiFiClient http_client;
+    HTTPClient http;
+    if (http.begin(http_client, UrlEncode(url))) {  // UrlEncode(url) = |http://192.168.178.86/cm?cmnd=POWER1%20ON|
+#endif
+      int http_code = http.GET();             // Start connection and send HTTP header
+      if (http_code > 0) {                    // http_code will be negative on error
+        if (http_code == HTTP_CODE_OK || http_code == HTTP_CODE_MOVED_PERMANENTLY) {
+/*
+          // Return received data to the user - Adds 900+ bytes to the code
+          String result = http.getString();   // File found at server - may need lot of ram or trigger out of memory!
+          uint16_t j = 0;
+          for (uint16_t i = 0; i < result.length(); i++) {
+            char text = result.charAt(i);
+            if (text > 31) {                  // Remove control characters like linefeed
+              mqtt_data[j++] = text;
+              if (j == sizeof(mqtt_data) -2) { break; }
+            }
+          }
+          mqtt_data[j] = '\0';
+          MqttPublishPrefixTopic_P(RESULT_OR_STAT, PSTR(D_CMND_WEBSEND));
+*/
+        }
         status = 0;                           // No error - Done
       } else {
         status = 2;                           // Connection failed
       }
+      http.end();                             // Clean up connection data
     } else {
-      status = 3;                             // Host not found
+      status = 3;                             // Host not found or connection error
     }
   }
   return status;
