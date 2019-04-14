@@ -28,7 +28,7 @@
  * Use online command StateText to translate ON, OFF, HOLD and TOGGLE.
  * Use online command Prefix to translate cmnd, stat and tele.
  *
- * Updated until v6.4.1.17 (up to commit 590c883b)
+ * Updated until v6.4.1.18
 \*********************************************************************/
 
 //#define LANGUAGE_MODULE_NAME         // Enable to display "Module Generic" (ie Spanish), Disable to display "Generic Module" (ie English)
@@ -93,6 +93,7 @@
 #define D_FALLBACK_TOPIC "Помощен топик"
 #define D_FALSE "Невярно"
 #define D_FILE "Файл"
+#define D_FLOW_RATE "Flow rate"
 #define D_FREE_MEMORY "Свободна памет"
 #define D_FREQUENCY "Честота"
 #define D_GAS "Газ"
@@ -148,6 +149,7 @@
 #define D_STOP "Стоп"
 #define D_SUBNET_MASK "Маска на подмрежата"
 #define D_SUBSCRIBE_TO "Записване за"
+#define D_UNSUBSCRIBE_FROM "Отписване от"
 #define D_SUCCESSFUL "Успешно"
 #define D_SUNRISE "Изгрев"
 #define D_SUNSET "Залез"
@@ -155,6 +157,7 @@
 #define D_TO "към"
 #define D_TOGGLE "Превключване"
 #define D_TOPIC "Топик"
+#define D_TOTAL_USAGE "Total Usage"
 #define D_TRANSMIT "Предаване"
 #define D_TRUE "Вярно"
 #define D_TVOC "TVOC"
@@ -219,7 +222,7 @@
 
 // xdrv_02_webserver.ino
 #define D_NOSCRIPT "Разрешете JavaScript, за да използвате Tasmota"
-#define D_MINIMAL_FIRMWARE_PLEASE_UPGRADE "Минимален фърмуеър - моля надградете го"
+#define D_MINIMAL_FIRMWARE_PLEASE_UPGRADE "Минимален фърмуеър<br/>моля надградете го"
 #define D_WEBSERVER_ACTIVE_ON "Уеб сървърът е активен на"
 #define D_WITH_IP_ADDRESS "с IP адрес"
 #define D_WEBSERVER_STOPPED "Уеб сървърът е спрян"
@@ -304,6 +307,7 @@
 #define D_BASE_TYPE "Базиран на"
 #define D_TEMPLATE_FLAGS "Флагове"
 #define D_ALLOW_ADC0 "ADC0 вход"
+#define D_ALLOW_ADC0_TEMP "ADC0 температура"
 #define D_ALLOW_PULLUP "Потребителски избор на pull-up"
 
 #define D_SAVE_CONFIGURATION "Запазване на конфигурацията"
@@ -491,6 +495,10 @@
 #define D_TX20_SOUTH "Ю"
 #define D_TX20_WEST "З"
 
+//xsns_43_hre.ino
+#define D_LOG_HRE "HRE: "
+
+
 // sonoff_template.h - keep them as short as possible to be able to fit them in GUI drop down box
 #define D_SENSOR_NONE          "Няма"
 #define D_SENSOR_USER          "Потребит."
@@ -575,12 +583,17 @@
 #define D_SENSOR_TXD           "Serial Tx"
 #define D_SENSOR_RXD           "Serial Rx"
 #define D_SENSOR_ROTARY        "Rotary"     // Suffix "1A"
+#define D_SENSOR_HRE_CLOCK     "HRE Clock"
+#define D_SENSOR_HRE_DATA      "HRE Data"
+#define D_SENSOR_ADE7953_IRQ   "ADE7953 IRQ"
 
 // Units
 #define D_UNIT_AMPERE "A"
 #define D_UNIT_CENTIMETER "cm"
 #define D_UNIT_HERTZ "Hz"
 #define D_UNIT_HOUR "h"
+#define D_UNIT_GALLONS "gal"
+#define D_UNIT_GALLONS_PER_MIN "g/m"
 #define D_UNIT_KILOGRAM "kg"
 #define D_UNIT_INCREMENTS "inc"
 #define D_UNIT_KILOMETER_PER_HOUR "km/h"

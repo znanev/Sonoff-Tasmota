@@ -93,6 +93,7 @@
 #define D_FALLBACK_TOPIC "Záložní topic"
 #define D_FALSE "Nepravda"
 #define D_FILE "Soubor"
+#define D_FLOW_RATE "Flow rate"
 #define D_FREE_MEMORY "Volná paměť"
 #define D_FREQUENCY "Kmitočet"
 #define D_GAS "Plyn"
@@ -148,6 +149,7 @@
 #define D_STOP "Stop"
 #define D_SUBNET_MASK "Maska podsítě"
 #define D_SUBSCRIBE_TO "Přihlaš se do"
+#define D_UNSUBSCRIBE_FROM "Unsubscribe from"
 #define D_SUCCESSFUL "úspěšné."
 #define D_SUNRISE "Svítání"
 #define D_SUNSET "Soumrak"
@@ -155,6 +157,7 @@
 #define D_TO "do"
 #define D_TOGGLE "Přepni"
 #define D_TOPIC "Topic"
+#define D_TOTAL_USAGE "Total Usage"
 #define D_TRANSMIT "Odešli"
 #define D_TRUE "Pravda"
 #define D_TVOC "TVOC"
@@ -219,7 +222,7 @@
 
 // xdrv_02_webserver.ino
 #define D_NOSCRIPT "Pro používání prostředí Tasmota povolte JavaScript"
-#define D_MINIMAL_FIRMWARE_PLEASE_UPGRADE "Firmware MINIMÁLNÍ - prosím zaktualizujte"
+#define D_MINIMAL_FIRMWARE_PLEASE_UPGRADE "Firmware MINIMÁLNÍ<br/>prosím zaktualizujte"
 #define D_WEBSERVER_ACTIVE_ON "Aktivní Web server"
 #define D_WITH_IP_ADDRESS "na IP adrese"
 #define D_WEBSERVER_STOPPED "Web server zastaven"
@@ -304,6 +307,7 @@
 #define D_BASE_TYPE "Based on"
 #define D_TEMPLATE_FLAGS "Options"
 #define D_ALLOW_ADC0 "ADC0 input"
+#define D_ALLOW_ADC0_TEMP "ADC0 temperature"
 #define D_ALLOW_PULLUP "User pull-up selection"
 
 #define D_SAVE_CONFIGURATION "Ulož nastavení"
@@ -491,6 +495,9 @@
 #define D_TX20_SOUTH "J"
 #define D_TX20_WEST "Z"
 
+//xsns_43_hre.ino
+#define D_LOG_HRE "HRE: "
+
 // sonoff_template.h - keep them as short as possible to be able to fit them in GUI drop down box
 #define D_SENSOR_NONE          "Není"
 #define D_SENSOR_USER          "User"
@@ -575,12 +582,17 @@
 #define D_SENSOR_TXD           "Serial Tx"
 #define D_SENSOR_RXD           "Serial Rx"
 #define D_SENSOR_ROTARY        "Rotary"     // Suffix "1A"
+#define D_SENSOR_HRE_CLOCK     "HRE Clock"
+#define D_SENSOR_HRE_DATA      "HRE Data"
+#define D_SENSOR_ADE7953_IRQ   "ADE7953 IRQ"
 
 // Units
 #define D_UNIT_AMPERE "A"
 #define D_UNIT_CENTIMETER "cm"
 #define D_UNIT_HERTZ "Hz"
 #define D_UNIT_HOUR "hod"
+#define D_UNIT_GALLONS "gal"
+#define D_UNIT_GALLONS_PER_MIN "g/m"
 #define D_UNIT_KILOGRAM "kg"
 #define D_UNIT_INCREMENTS "inc"
 #define D_UNIT_KILOMETER_PER_HOUR "km/h"  // or "km/h"

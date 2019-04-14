@@ -93,6 +93,7 @@
 #define D_FALLBACK_TOPIC "Reservämne"
 #define D_FALSE "Falskt"
 #define D_FILE "Fil"
+#define D_FLOW_RATE "Flow rate"
 #define D_FREE_MEMORY "Ledigt minne"
 #define D_FREQUENCY "Frekvens"
 #define D_GAS "Gas"
@@ -148,6 +149,7 @@
 #define D_STOP "Stoppa"
 #define D_SUBNET_MASK "Nätmask"
 #define D_SUBSCRIBE_TO "Prenumera på"
+#define D_UNSUBSCRIBE_FROM "Unsubscribe from"
 #define D_SUCCESSFUL "Lyckat"
 #define D_SUNRISE "Soluppgång"
 #define D_SUNSET "Solnedgång"
@@ -155,6 +157,7 @@
 #define D_TO "till"
 #define D_TOGGLE "Växla"
 #define D_TOPIC "Ämne"
+#define D_TOTAL_USAGE "Total Usage"
 #define D_TRANSMIT "Sänd"
 #define D_TRUE "Sant"
 #define D_TVOC "TVOC"
@@ -219,7 +222,7 @@
 
 // xdrv_02_webserver.ino
 #define D_NOSCRIPT "För att använda Tasmota, aktivera JavaScript"
-#define D_MINIMAL_FIRMWARE_PLEASE_UPGRADE "MINIMAL firmware - var god uppgradera"
+#define D_MINIMAL_FIRMWARE_PLEASE_UPGRADE "MINIMAL firmware<br/>var god uppgradera"
 #define D_WEBSERVER_ACTIVE_ON "Webbserver aktiv på"
 #define D_WITH_IP_ADDRESS "med IP-adress"
 #define D_WEBSERVER_STOPPED "Webbserver stoppad"
@@ -304,6 +307,7 @@
 #define D_BASE_TYPE "Based on"
 #define D_TEMPLATE_FLAGS "Options"
 #define D_ALLOW_ADC0 "ADC0 input"
+#define D_ALLOW_ADC0_TEMP "ADC0 temperature"
 #define D_ALLOW_PULLUP "User pull-up selection"
 
 #define D_SAVE_CONFIGURATION "Spara konfiguration"
@@ -491,6 +495,9 @@
 #define D_TX20_SOUTH "S"
 #define D_TX20_WEST "V"
 
+//xsns_43_hre.ino
+#define D_LOG_HRE "HRE: "
+
 // sonoff_template.h - keep them as short as possible to be able to fit them in GUI drop down box
 #define D_SENSOR_NONE          "Ingen"
 #define D_SENSOR_USER          "User"
@@ -575,12 +582,17 @@
 #define D_SENSOR_TXD           "Serial Tx"
 #define D_SENSOR_RXD           "Serial Rx"
 #define D_SENSOR_ROTARY        "Rotary"     // Suffix "1A"
+#define D_SENSOR_HRE_CLOCK     "HRE Clock"
+#define D_SENSOR_HRE_DATA      "HRE Data"
+#define D_SENSOR_ADE7953_IRQ   "ADE7953 IRQ"
 
 // Units
 #define D_UNIT_AMPERE "A"
 #define D_UNIT_CENTIMETER "cm"
 #define D_UNIT_HERTZ "Hz"
 #define D_UNIT_HOUR "Tim"
+#define D_UNIT_GALLONS "gal"
+#define D_UNIT_GALLONS_PER_MIN "g/m"
 #define D_UNIT_INCREMENTS "ink"
 #define D_UNIT_KILOGRAM "kg"
 #define D_UNIT_KILOMETER_PER_HOUR "km/h"  // or "km/h"

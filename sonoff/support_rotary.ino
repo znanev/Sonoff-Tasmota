@@ -17,8 +17,7 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#define ROTARY_V1
-#ifdef ROTARY_V1
+
 /*********************************************************************************************\
  * Rotary support
 \*********************************************************************************************/
@@ -30,6 +29,9 @@ uint8_t rotary_position = 128;
 uint8_t rotary_last_position = 128;
 uint8_t interrupts_in_use = 0;
 uint8_t rotary_changed = 0;
+
+//#define ROTARY_V1
+#ifdef ROTARY_V1
 
 /********************************************************************************************/
 
@@ -115,8 +117,7 @@ void RotaryHandler(void)
         if (t > 500) {
           t = 500;
         }
-        snprintf_P(log_data, sizeof(log_data), PSTR(D_LOG_APPLICATION D_CMND_COLORTEMPERATURE " %d"), rotary_position - rotary_last_position);
-        AddLog(LOG_LEVEL_DEBUG);
+        AddLog_P2(LOG_LEVEL_DEBUG, PSTR(D_LOG_APPLICATION D_CMND_COLORTEMPERATURE " %d"), rotary_position - rotary_last_position);
         LightSetColorTemp((uint16_t)t);
       } else {
         int8_t d = Settings.light_dimmer;
@@ -127,8 +128,7 @@ void RotaryHandler(void)
         if (d > 100) {
           d = 100;
         }
-        snprintf_P(log_data, sizeof(log_data), PSTR(D_LOG_APPLICATION D_CMND_DIMMER " %d"), rotary_position - rotary_last_position);
-        AddLog(LOG_LEVEL_DEBUG);
+        AddLog_P2(LOG_LEVEL_DEBUG, PSTR(D_LOG_APPLICATION D_CMND_DIMMER " %d"), rotary_position - rotary_last_position);
 
         LightSetDimmer((uint8_t)d);
         Settings.light_dimmer = d;
